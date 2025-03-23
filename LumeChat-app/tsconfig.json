@@ -13,5 +13,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ]
+, "assets/images/index.js", "context/reducers/userAuthReducer.js", "components/UserTextInput.jsx", "screens/LoginScreen.jsx", "screens/SignUpScreen.jsx", "app/index.jsx", "components/index.jsx", "screens/HomeScreen.jsx", "screens/index.jsx", "screens/SplashScreen.jsx", "context/actions/userActions.js", "config/firebase.config.js"  ]
 }
