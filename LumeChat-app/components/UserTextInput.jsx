@@ -1,6 +1,6 @@
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import { View, TextInput, TouchableOpacity, StyleSheet } from "react-native";
 import React, { useEffect, useState } from "react";
-import { Entypo, MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 
 const UserTextInput = ({
   placeholder,
@@ -39,10 +39,10 @@ const UserTextInput = ({
   }, [placeholder]);
 
   return (
-    <View className={`border border-gray-700 flex-row items-center w-full px-4 py-3 rounded-md bg-discord-input ${customStyle}`}>
-      <MaterialIcons name={icon} size={24} color={"#72767D"} className="mr-2" />
+    <View style={[styles.inputContainer, customStyle]}>
+      <MaterialIcons name={icon} size={24} color={"#72767D"} />
       <TextInput
-        className="flex-1 text-base text-white font-normal ml-2"
+        style={styles.input}
         placeholder={placeholder}
         placeholderTextColor="#72767D"
         value={value}
@@ -65,5 +65,27 @@ const UserTextInput = ({
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#202225',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#40444b',
+    padding: 12,
+    height: 50,
+    marginBottom: 4,
+  },
+  input: {
+    flex: 1,
+    color: '#ffffff',
+    fontSize: 16,
+    marginLeft: 12,
+    height: '100%',
+    padding: 0,
+  }
+});
 
 export default UserTextInput;

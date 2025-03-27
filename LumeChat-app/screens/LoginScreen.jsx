@@ -1,124 +1,283 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { 
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
+  TextInput, Alert 
+} from "react-native";
 import React, { useState } from "react";
-import { UserTextInput } from "../components";
 import { useNavigation } from "@react-navigation/native";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { firebaseAuth, firestoreDB } from "../config/firebase.config";
-import { doc, getDoc } from "firebase/firestore";
-import { useDispatch } from "react-redux";
-import { SET_USER } from "../context/actions/userActions";
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { authService } from '../services/auth.service';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [getEmailValidationStatus, setGetEmailValidationStatus] =
-    useState(false);
-
-  const [alert, setAlert] = useState(false);
-  const [alertMessage, setAlertMessage] = useState(null);
-
+  const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
-  const dispatch = useDispatch();
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setAlert(true);
-      setAlertMessage("Please fill all fields");
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
-    if (!getEmailValidationStatus) {
-      setAlert(true);
-      setAlertMessage("Please enter a valid email");
-      return;
-    }
-
+    setIsLoading(true);
     try {
-      const userCred = await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
-      
-      if (userCred?.user) {
-        const docSnap = await getDoc(doc(firestoreDB, "users", userCred.user.uid));
-        if (docSnap.exists()) {
-          dispatch(SET_USER(docSnap.data()));
-          navigation.replace("HomeScreen");
-        }
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      setAlert(true);
-      if (err.code === "auth/invalid-credential") {
-        setAlertMessage("Invalid email or password");
-      } else {
-        setAlertMessage("Login failed. Please try again.");
-      }
+      await authService.signIn(email, password);
+      navigation.replace("HomeScreen");
+    } catch (error) {
+      Alert.alert("Error", error.message);
     }
-
-    setTimeout(() => setAlert(false), 3000);
+    setIsLoading(false);
   };
 
   return (
-    <View className="flex-1 bg-discord-bg p-6">
-      <View className="flex-1 items-center justify-center">
-        <View className="w-full bg-discord-card p-8 rounded-md">
-          <Text className="text-white text-2xl font-bold text-center mb-2">
-            Welcome back!
-          </Text>
-          <Text className="text-discord-text text-center mb-6">
-            We're so excited to see you again!
-          </Text>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#202225', '#2f3136', '#36393f']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.background}
+      >
+        <View style={styles.glassPattern} />
+      </LinearGradient>
 
-          <Text className="text-discord-text text-xs font-bold mb-2">
-            EMAIL OR PHONE NUMBER
-          </Text>
-          <UserTextInput
-            placeholder="Enter your email"
-            isPass={false}
-            setStatValue={setEmail}
-            setGetEmailValidationStatus={setGetEmailValidationStatus}
-          />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.brandText}>LumeChat</Text>
+          <Text style={styles.welcomeText}>Welcome Back!</Text>
+          <Text style={styles.subtitleText}>We're so excited to see you again</Text>
+        </View>
 
-          <Text className="text-discord-text text-xs font-bold mt-4 mb-2">
-            PASSWORD
-          </Text>
-          <UserTextInput
-            placeholder="Enter your password"
-            isPass={true}
-            setStatValue={setPassword}
-          />
+        <View style={styles.formCard}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.labelText}>EMAIL</Text>
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="email" size={20} color="#7289da" />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your email"
+                placeholderTextColor="#8e9297"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
 
-          <TouchableOpacity className="mt-1">
-            <Text className="text-discord-link text-sm">
-              Forgot your password?
-            </Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.labelText}>PASSWORD</Text>
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="lock" size={20} color="#7289da" />
+              <TextInput
+                style={styles.input}
+                placeholder="Enter your password"
+                placeholderTextColor="#8e9297"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity 
+            style={styles.forgotPassword}
+            onPress={() => {/* Handle forgot password */}}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
-
-          {alert && (
-            <Text className="text-red-500 text-sm text-center mt-4">{alertMessage}</Text>
-          )}
 
           <TouchableOpacity
             onPress={handleLogin}
-            className="w-full bg-primary py-3 rounded-sm mt-6"
+            style={styles.loginButton}
+            disabled={isLoading}
           >
-            <Text className="text-white text-center font-semibold">
-              Log In
-            </Text>
+            <LinearGradient
+              colors={['#6C22E5', '#9747FF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.buttonGradient}
+            >
+              <Text style={styles.buttonText}>
+                {isLoading ? 'Logging in...' : 'Login'}
+              </Text>
+              <MaterialIcons name="arrow-forward" size={20} color="#fff" />
+            </LinearGradient>
           </TouchableOpacity>
 
-          <View className="mt-4 flex-row">
-            <Text className="text-discord-text text-sm">
-              Need an account?{" "}
-            </Text>
-            <TouchableOpacity onPress={() => navigation.navigate("SignUpScreen")}>
-              <Text className="text-discord-link text-sm">
-                Register
-              </Text>
+          <View style={styles.footer}>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate("SignUpScreen")}
+              style={styles.signupLink}
+            >
+              <Text style={styles.signupText}>Need an account?</Text>
+              <Text style={styles.signupHighlight}>Register</Text>
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#36393f',
+  },
+  background: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: '100%',
+  },
+  glassPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    backdropFilter: 'blur(60px)',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
+  },
+  headerContainer: {
+    alignItems: 'center',
+    marginTop: 60,
+    marginBottom: 40,
+  },
+  brandText: {
+    fontSize: 24,
+    color: '#ffffff',
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 20,
+  },
+  welcomeText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  subtitleText: {
+    fontSize: 16,
+    color: '#ffffff',
+    opacity: 0.8,
+    marginTop: 8,
+  },
+  formCard: {
+    backgroundColor: '#2f3136',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 10,
+    borderWidth: 1,
+    borderColor: '#202225',
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  labelText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#8e9297',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#202225',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#40444b',
+    padding: 12,
+    height: 50,
+  },
+  input: {
+    flex: 1,
+    color: '#ffffff',
+    fontSize: 16,
+    marginLeft: 12,
+    height: '100%',
+    padding: 0,
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginTop: 4,
+    marginBottom: 20,
+  },
+  forgotPasswordText: {
+    color: '#7289da',
+    fontSize: 13,
+  },
+  loginButton: {
+    marginTop: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    elevation: 3,
+  },
+  buttonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    gap: 8,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  footer: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#40444b',
+  },
+  dividerText: {
+    color: '#8e9297',
+    paddingHorizontal: 16,
+    fontSize: 14,
+  },
+  signupLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  signupText: {
+    color: '#8e9297',
+    fontSize: 15,
+  },
+  signupHighlight: {
+    color: '#7289da',
+    fontWeight: 'bold',
+    marginLeft: 8,
+    fontSize: 15,
+  }
+});
 
 export default LoginScreen;
