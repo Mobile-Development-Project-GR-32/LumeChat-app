@@ -8,6 +8,7 @@ import LoginScreen from "../screens/LoginScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import HomeScreen from "../screens/HomeScreen";
 import SplashScreen from "../screens/SplashScreen";
+import CreateChannelScreen from "../screens/CreateChannelScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -19,6 +20,18 @@ const App = () => {
         <Stack.Screen name="SignUpScreen" component={SignUpScreen} />
         <Stack.Screen name="HomeScreen" component={HomeScreen} />   
         <Stack.Screen name="SplashScreen" component={SplashScreen} />
+        <Stack.Screen 
+          name="CreateChannel" 
+          component={CreateChannelScreen}
+          options={{
+            headerShown: true,
+            headerTitle: 'Create Channel',
+            headerStyle: {
+              backgroundColor: '#2f3136',
+            },
+            headerTintColor: '#fff',
+          }}
+        />
       </Stack.Navigator>
     </Provider>
   );
