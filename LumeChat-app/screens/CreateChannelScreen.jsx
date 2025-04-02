@@ -7,8 +7,11 @@ import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSelector } from 'react-redux';
+import { channelService } from '../services/channel.service';
 
 const CreateChannelScreen = ({ navigation, route }) => {
+  const user = useSelector((state) => state.user);
   const [channelName, setChannelName] = useState('');
   const [category, setCategory] = useState('GENERAL');
   const [isPublic, setIsPublic] = useState(true);
@@ -18,7 +21,13 @@ const CreateChannelScreen = ({ navigation, route }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [description, setDescription] = useState('');
 
-  const categories = ['INFORMATION', 'GENERAL', 'STUDY GROUPS', 'PROJECTS', 'VOICE CHANNELS'];
+  const categories = [
+    'INFORMATION',
+    'GENERAL',
+    'STUDY_GROUPS',
+    'PROJECTS',
+    'VOICE_CHANNELS'
+  ];
 
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -27,6 +36,22 @@ const CreateChannelScreen = ({ navigation, route }) => {
       useNativeDriver: true,
     }).start();
   }, []);
+
+  React.useEffect(() => {
+    console.log('Current user in CreateChannel:', user);
+    if (!user?._id) {
+      Alert.alert(
+        'Error',
+        'Please log in again',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.replace('LoginScreen')
+          }
+        ]
+      );
+    }
+  }, [user]);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -115,31 +140,42 @@ const CreateChannelScreen = ({ navigation, route }) => {
   };
 
   const handleCreateChannel = async () => {
+    if (!validateForm()) return;
+
     setIsSubmitting(true);
-    
-    if (!validateForm()) {
-      setIsSubmitting(false);
-      return;
+    try {
+        const channelData = {
+            name: channelName.trim(),
+            category: category,
+            isPublic: isPublic,
+            description: description.trim(),
+            coverImage: coverImage // This is now optional
+        };
+
+        console.log('Submitting channel data:', channelData);
+        const newChannel = await channelService.createChannel(user._id, channelData);
+        
+        console.log('Channel created:', newChannel);
+        Alert.alert(
+            'Success',
+            'Channel created successfully!',
+            [{
+                text: 'OK',
+                onPress: () => {
+                    // Ensure we're not creating a new state update if the component is unmounted
+                    navigation.navigate('HomeScreen', { refresh: true });
+                }
+            }]
+        );
+    } catch (error) {
+        console.error('Create channel error:', error);
+        Alert.alert(
+            'Error',
+            'Failed to create channel. Please try again.'
+        );
+    } finally {
+        setIsSubmitting(false);
     }
-
-    const newChannel = {
-      name: channelName.trim(),
-      category,
-      description: description.trim(),
-      isPublic,
-      coverImage,
-      unreadCount: 0,
-      createdAt: Date.now()
-    };
-
-    console.log('Creating channel:', {
-      name: newChannel.name,
-      category: newChannel.category,
-      isPublic: newChannel.isPublic,
-      timestamp: new Date().toISOString()
-    });
-    
-    navigation.navigate('HomeScreen', { newChannel });
   };
 
   return (

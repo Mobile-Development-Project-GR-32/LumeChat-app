@@ -7,12 +7,14 @@ import { useNavigation } from "@react-navigation/native";
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { authService } from '../services/auth.service';
+import { useDispatch } from 'react-redux';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
+  const dispatch = useDispatch();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -22,9 +24,15 @@ const LoginScreen = () => {
 
     setIsLoading(true);
     try {
-      await authService.signIn(email, password);
+      const userData = await authService.signIn(email, password);
+      console.log('Login successful:', userData);
+
+      // Dispatch user data to Redux store
+      dispatch({ type: 'SET_USER', payload: userData });
+
       navigation.replace("HomeScreen");
     } catch (error) {
+      console.error('Login error:', error);
       Alert.alert("Error", error.message);
     }
     setIsLoading(false);
