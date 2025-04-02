@@ -9,7 +9,7 @@ import { UserTextInput } from "../components";
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const SignUpScreen = () => {
+const SignUpScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -20,8 +20,6 @@ const SignUpScreen = () => {
   const [getEmailValidationStatus, setGetEmailValidationStatus] = useState(false);
   const [isVerificationSent, setIsVerificationSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const navigation = useNavigation();
 
   useEffect(() => {
     let verificationCheck;
@@ -136,11 +134,18 @@ const SignUpScreen = () => {
     <View style={styles.container}>
       <LinearGradient
         colors={['#202225', '#2f3136', '#36393f']}
+        style={styles.background}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.background}
       >
-        <View style={styles.glassPattern} />
+        <View style={styles.glowPattern}>
+          <LinearGradient
+            colors={['rgba(114,137,218,0.2)', 'transparent']}
+            style={styles.glow}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          />
+        </View>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -151,13 +156,6 @@ const SignUpScreen = () => {
         </View>
 
         <View style={styles.formCard}>
-          <View style={styles.formHeader}>
-            <View style={styles.stepIndicator}>
-              <Text style={styles.stepNumber}>01</Text>
-              <Text style={styles.stepText}>Account Setup</Text>
-            </View>
-          </View>
-
           <View style={styles.inputGroup}>
             <Text style={styles.labelText}>FULL NAME</Text>
             <View style={[styles.inputContainer, fullNameError && styles.inputError]}>
@@ -217,7 +215,7 @@ const SignUpScreen = () => {
 
           <TouchableOpacity
             onPress={handleSignUp}
-            style={styles.signupButton}
+            style={[styles.signupButton, isSubmitting && styles.buttonDisabled]}
             disabled={isSubmitting}
           >
             <LinearGradient
@@ -227,7 +225,7 @@ const SignUpScreen = () => {
               style={styles.buttonGradient}
             >
               <Text style={styles.buttonText}>
-                {isSubmitting ? 'Creating Your Space...' : 'Join the Evolution'}
+                {isSubmitting ? 'Creating Account...' : 'Join the Evolution'}
               </Text>
               <MaterialIcons name="arrow-forward" size={20} color="#fff" />
             </LinearGradient>
@@ -249,6 +247,7 @@ const SignUpScreen = () => {
           </View>
         </View>
       </ScrollView>
+
       <VerificationModal />
     </View>
   );
@@ -266,14 +265,20 @@ const styles = StyleSheet.create({
     top: 0,
     height: '100%',
   },
-  glassPattern: {
+  glowPattern: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    backdropFilter: 'blur(60px)',
+    height: 300,
+  },
+  glow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+    transform: [{ rotate: '45deg' }],
   },
   scrollContent: {
     flexGrow: 1,
@@ -317,25 +322,6 @@ const styles = StyleSheet.create({
     elevation: 10,
     borderWidth: 1,
     borderColor: '#202225',
-  },
-  formHeader: {
-    marginBottom: 24,
-  },
-  stepIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  stepNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#7289da',
-    marginRight: 12,
-  },
-  stepText: {
-    fontSize: 16,
-    color: '#ffffff',
-    fontWeight: '600',
   },
   inputGroup: {
     marginBottom: 16,
@@ -396,10 +382,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     gap: 8,
   },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: 'bold',
+  buttonDisabled: {
+    opacity: 0.6,
   },
   footer: {
     marginTop: 24,
@@ -409,6 +393,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: 24,
+    width: '100%',
   },
   dividerLine: {
     flex: 1,
