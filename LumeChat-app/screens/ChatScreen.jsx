@@ -7,8 +7,12 @@ const ChatScreen = () => {
     const [currentChannel, setCurrentChannel] = useState('Placeholder')
 
     return (
-        <View>
-            <MessageBoard channel={currentChannel}/>
+        <View className="flex-1 bg-discord-bg p-6">
+              <View className="flex-1 items-center justify-center">
+                <View className="w-full bg-discord-card p-8 rounded-md">
+                    <MessageBoard channel={currentChannel}/>
+                </View>
+              </View>
         </View>
     )
 }
