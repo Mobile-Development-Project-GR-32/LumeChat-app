@@ -1,10 +1,10 @@
 import { useState } from "react"
 import { View } from "react-native"
-import { MessageBoard } from '../components/MessageBoard.jsx'
+import { MessageBoard } from '../components/MessageBoard.tsx'
 
 const ChatScreen = () => {
     const [channels, setChannels] = useState('')
-    const [currentChannel, setCurrentChannel] = useState('')
+    const [currentChannel, setCurrentChannel] = useState('Placeholder')
 
     return (
         <View>
