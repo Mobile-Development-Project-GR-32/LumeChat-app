@@ -52,6 +52,7 @@ const AppContent = () => {
           headerTintColor: '#fff',
         }}
       />
+      <Stack.Screen name="ChatScreen" component={ChatScreen}/>
     </Stack.Navigator>
   );
 };
