@@ -10,7 +10,9 @@ import LoginScreen from "../screens/LoginScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import HomeScreen from "../screens/HomeScreen";
 import SplashScreen from "../screens/SplashScreen";
+import ChatScreen from '../screens/ChatScreen'
 import CreateChannelScreen from "../screens/CreateChannelScreen";
+
 
 const Stack = createNativeStackNavigator();
 

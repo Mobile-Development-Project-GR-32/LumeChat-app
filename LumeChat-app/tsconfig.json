@@ -26,5 +26,5 @@
     "context/reducers/index.js",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ]
+, "components/MessageBoard.tsx"  ]
 }
