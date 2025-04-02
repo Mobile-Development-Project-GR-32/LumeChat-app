@@ -48,11 +48,28 @@ export const authService = {
 
   // Sign in existing user
   async signIn(email, password) {
-    const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
-    await updateDoc(doc(firestoreDB, "users", userCred.user.uid), {
-      lastLogin: Date.now()
-    });
-    return userCred.user;
+    try {
+      const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
+      
+      // Get user data from Firestore
+      const userDoc = await getDoc(doc(firestoreDB, "users", userCred.user.uid));
+      if (!userDoc.exists()) {
+        throw new Error('User data not found');
+      }
+
+      const userData = {
+        _id: userCred.user.uid,
+        email: userCred.user.email,
+        ...userDoc.data()
+      };
+
+      // Store user data in AsyncStorage
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
+      return userData;
+    } catch (error) {
+      console.error('Sign in error:', error);
+      throw error;
+    }
   },
 
   // Send verification email
@@ -102,7 +119,13 @@ export const authService = {
 
   // Sign out user
   async signOut() {
-    await signOut(firebaseAuth);
+    try {
+      await signOut(firebaseAuth);
+      await AsyncStorage.removeItem('user');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      throw error;
+    }
   },
 
   // Get current user data
