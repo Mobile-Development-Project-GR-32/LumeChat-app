@@ -1,4 +1,4 @@
-const API_URL = 'http://192.168.0.56:3000/api';  // Use your machine's IP address
+const API_URL = 'http://192.168.0.56:3000/api';  // Already using IP address
 
 export const searchService = {
     getHeaders: (userId) => ({

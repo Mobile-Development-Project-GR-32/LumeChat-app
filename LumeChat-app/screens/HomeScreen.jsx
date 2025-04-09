@@ -121,12 +121,10 @@ const HomeScreen = ({ route, navigation }) => {
         // Already on home
         break;
       case 'notifications':
-        // Navigate to notifications when implemented
         Alert.alert('Coming Soon', 'Notifications feature is coming soon!');
         break;
       case 'profile':
-        // Navigate to profile when implemented
-        Alert.alert('Coming Soon', 'Profile feature is coming soon!');
+        navigation.navigate('Profile');
         break;
     }
   };
