@@ -30,7 +30,7 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+      Alert.alert("Error", "Please enter both email and password");
       return;
     }
 
@@ -38,16 +38,18 @@ const LoginScreen = () => {
     try {
       const userData = await authService.signIn(email, password);
       console.log('Login successful:', userData);
-
-      // Dispatch user data to Redux store
       dispatch({ type: 'SET_USER', payload: userData });
-
       navigation.replace("HomeScreen");
     } catch (error) {
       console.error('Login error:', error);
-      Alert.alert("Error", error.message);
+      Alert.alert(
+        "Login Failed",
+        error.message || "Please verify your email and password",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (

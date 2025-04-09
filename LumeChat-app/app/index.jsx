@@ -4,15 +4,22 @@ import { Provider } from "react-redux";
 import Store from "../context/store";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
+import { Provider as PaperProvider } from 'react-native-paper';
 
 // Import your screen components
 import LoginScreen from "../screens/LoginScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import HomeScreen from "../screens/HomeScreen";
 import SplashScreen from "../screens/SplashScreen";
-import ChatScreen from '../screens/ChatScreen'
+import ChatScreen from '../screens/ChatScreen';
 import CreateChannelScreen from "../screens/CreateChannelScreen";
-
+import ProfileScreen from "../screens/ProfileScreen";
+import SettingsScreen from "../screens/settings/SettingsScreen";
+import NotificationsScreen from "../screens/settings/NotificationsScreen";
+import PrivacyScreen from "../screens/settings/PrivacyScreen";
+import SecurityScreen from "../screens/settings/SecurityScreen";
+import ThemeScreen from "../screens/settings/ThemeScreen";
+import QRCodeScreen from "../screens/settings/QRCodeScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -53,6 +60,90 @@ const AppContent = () => {
         }}
       />
       <Stack.Screen name="ChatScreen" component={ChatScreen}/>
+      <Stack.Screen 
+        name="Profile" 
+        component={ProfileScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Profile',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+      <Stack.Screen 
+        name="Settings" 
+        component={SettingsScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Settings',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+      <Stack.Screen 
+        name="Notifications" 
+        component={NotificationsScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Notifications',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+      <Stack.Screen 
+        name="Privacy" 
+        component={PrivacyScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Privacy & Safety',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+      <Stack.Screen 
+        name="Security" 
+        component={SecurityScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Security',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+      <Stack.Screen 
+        name="Theme" 
+        component={ThemeScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Appearance',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+      <Stack.Screen 
+        name="QRCode" 
+        component={QRCodeScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'QR Code',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
     </Stack.Navigator>
   );
 };
@@ -60,7 +151,9 @@ const AppContent = () => {
 const App = () => {
   return (
     <Provider store={Store}>
-      <AppContent />
+      <PaperProvider>
+        <AppContent />
+      </PaperProvider>
     </Provider>
   );
 };

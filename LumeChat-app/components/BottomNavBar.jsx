@@ -3,13 +3,27 @@ import { View, TouchableOpacity, Text, StyleSheet, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector } from 'react-redux';
+import { useNavigation } from '@react-navigation/native'; // Add this
 
 const BottomNavBar = ({ activeTab, onTabPress }) => {
   const user = useSelector((state) => state.user);
+  const navigation = useNavigation(); // Add this
 
   const getInitials = (name) => {
     if (!name) return '?';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  const handleSettingsPress = () => {
+    navigation.navigate('Settings'); // Simplified navigation call
+  };
+
+  const handleTabPress = (id) => {
+    if (id === 'settings') {
+        handleSettingsPress();
+    } else {
+        onTabPress(id);
+    }
   };
 
   const tabs = [
@@ -27,32 +41,14 @@ const BottomNavBar = ({ activeTab, onTabPress }) => {
       badge: 3 // Example badge count
     },
     { 
-      id: 'profile',
-      label: 'Profile',
-      gradient: ['#4752C4', '#3C45A5'],
-      isProfile: true
+      id: 'settings',
+      icon: 'settings',
+      label: 'Settings',
+      gradient: ['#4752C4', '#3C45A5']
     }
   ];
 
   const renderTabContent = (tab) => {
-    if (tab.isProfile) {
-      if (user?.profilePic) {
-        return (
-          <Image 
-            source={{ uri: user.profilePic }}
-            style={styles.profilePic}
-          />
-        );
-      }
-      return (
-        <View style={[styles.avatarContainer, { backgroundColor: '#7289DA' }]}>
-          <Text style={styles.avatarText}>
-            {getInitials(user?.fullName || user?.displayName)}
-          </Text>
-        </View>
-      );
-    }
-
     return (
       <>
         <MaterialIcons
@@ -78,7 +74,7 @@ const BottomNavBar = ({ activeTab, onTabPress }) => {
         {tabs.map((tab) => (
           <TouchableOpacity
             key={tab.id}
-            onPress={() => onTabPress(tab.id)}
+            onPress={() => handleTabPress(tab.id)}
             style={[
               styles.tabButton,
               activeTab === tab.id && styles.activeTab
@@ -161,6 +157,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 10, // Reduced from 12
     fontWeight: 'bold',
+  },
+  profileButton: {
+    padding: 4,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
 });
 

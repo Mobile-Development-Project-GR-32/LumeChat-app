@@ -8,6 +8,8 @@ import {
 import { doc, setDoc, updateDoc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { firebaseAuth, firestoreDB } from '../config/firebase.config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { profileService } from './profile.service';
+import { avatars } from '../utils/supports';
 
 export const authService = {
   // Check username availability
@@ -19,56 +21,74 @@ export const authService = {
   },
 
   // Sign up new user
-  async signUp(email, password, fullName, username) {
-    // Check username availability
-    const isUsernameAvailable = await this.checkUsernameAvailability(username);
-    if (!isUsernameAvailable) {
-      throw new Error('Username is already taken');
+  signUp: async (email, password, fullName, username) => {
+    try {
+      console.log('Attempting signup with:', { email, fullName, username });
+      
+      // Check username availability first
+      const isUsernameAvailable = await authService.checkUsernameAvailability(username);
+      if (!isUsernameAvailable) {
+        throw new Error('Username is already taken');
+      }
+
+      // Create user with Firebase Auth
+      const userCred = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+      console.log('User created:', userCred.user.uid);
+
+      // Send verification email
+      await sendEmailVerification(userCred.user);
+
+      // Create initial user data without profile picture
+      const userData = {
+        _id: userCred.user.uid,
+        fullName,
+        email,
+        username: username.toLowerCase(),
+        status: 'Hey there! I am using LumeChat',
+        createdAt: new Date().toISOString(),
+        emailVerified: false
+      };
+
+      console.log('Storing user data:', userData);
+
+      // Store in AsyncStorage for later verification
+      await AsyncStorage.setItem('pendingUserData', JSON.stringify(userData));
+      
+      return userCred.user;
+
+    } catch (error) {
+      console.error('Signup error:', error);
+      throw new Error(
+        error.code === 'auth/email-already-in-use' ? 'Email is already in use.' :
+        error.code === 'auth/invalid-email' ? 'Invalid email address.' :
+        error.code === 'auth/operation-not-allowed' ? 'Operation not allowed.' :
+        error.code === 'auth/weak-password' ? 'Password is too weak.' :
+        error.message || 'Unable to sign up. Please try again later.'
+      );
     }
-
-    const userCred = await createUserWithEmailAndPassword(firebaseAuth, email, password);
-    await sendEmailVerification(userCred.user);
-
-    // Store temporary user data in AsyncStorage
-    const tempUserData = {
-      _id: userCred.user.uid,
-      fullName,
-      email,
-      username: username.toLowerCase(),
-      displayName: `@${username}`,
-      createdAt: Date.now(),
-      emailVerified: false,
-      providerData: userCred.user.providerData[0],
-    };
-
-    // We'll store this data later when email is verified
-    await AsyncStorage.setItem('pendingUserData', JSON.stringify(tempUserData));
-    return userCred.user;
   },
 
   // Sign in existing user
-  async signIn(email, password) {
+  signIn: async (email, password) => {
     try {
       const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
       
-      // Get user data from Firestore
-      const userDoc = await getDoc(doc(firestoreDB, "users", userCred.user.uid));
-      if (!userDoc.exists()) {
-        throw new Error('User data not found');
-      }
-
-      const userData = {
-        _id: userCred.user.uid,
-        email: userCred.user.email,
-        ...userDoc.data()
-      };
-
-      // Store user data in AsyncStorage
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      return userData;
+      // Get fresh profile data from API
+      const profile = await profileService.getProfile(userCred.user.uid);
+      
+      // Store complete profile data including profilePic
+      await AsyncStorage.setItem('user', JSON.stringify(profile));
+      
+      return profile;
     } catch (error) {
       console.error('Sign in error:', error);
-      throw error;
+      throw new Error(
+        error.code === 'auth/user-not-found' ? 'Account not found. Please sign up first.' :
+        error.code === 'auth/wrong-password' ? 'Incorrect password. Please try again.' :
+        error.code === 'auth/invalid-email' ? 'Invalid email address.' :
+        error.code === 'auth/too-many-requests' ? 'Too many failed attempts. Please try again later.' :
+        'Unable to login. Please check your credentials.'
+      );
     }
   },
 
@@ -81,24 +101,26 @@ export const authService = {
   },
 
   // Check email verification status
-  async checkEmailVerification() {
+  checkEmailVerification: async () => {
     const user = firebaseAuth.currentUser;
     if (user) {
       await user.reload();
       if (user.emailVerified) {
         try {
-          // Get pending user data from AsyncStorage
           const pendingDataString = await AsyncStorage.getItem('pendingUserData');
-          const pendingUserData = pendingDataString ? JSON.parse(pendingDataString) : null;
+          const pendingUserData = JSON.parse(pendingDataString);
 
           if (pendingUserData) {
-            // Store in Firestore only after verification
-            await setDoc(doc(firestoreDB, "users", user.uid), {
+            // Get profile picture from API
+            const profileData = await profileService.getProfile(user.uid);
+            const userData = {
               ...pendingUserData,
               emailVerified: true,
-              verifiedAt: Date.now()
-            });
-            // Clear temporary data
+              verifiedAt: new Date().toISOString(),
+              profilePic: profileData.profilePic // Use API profile picture
+            };
+
+            await setDoc(doc(firestoreDB, "users", user.uid), userData);
             await AsyncStorage.removeItem('pendingUserData');
           }
           return true;

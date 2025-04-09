@@ -8,6 +8,7 @@ import { authService } from '../services/auth.service';
 import { UserTextInput } from "../components";
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useDispatch } from 'react-redux';
 
 const SignUpScreen = ({ navigation }) => {
   const [email, setEmail] = useState("");
@@ -20,6 +21,7 @@ const SignUpScreen = ({ navigation }) => {
   const [getEmailValidationStatus, setGetEmailValidationStatus] = useState(false);
   const [isVerificationSent, setIsVerificationSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     let verificationCheck;
@@ -29,11 +31,8 @@ const SignUpScreen = ({ navigation }) => {
           const isVerified = await authService.checkEmailVerification();
           if (isVerified) {
             clearInterval(verificationCheck);
-            Alert.alert(
-              "Success",
-              "Email verified successfully! You can now login.",
-              [{ text: "OK", onPress: () => navigation.replace("LoginScreen") }]
-            );
+            setIsVerificationSent(false);
+            navigation.replace("LoginScreen"); // Direct navigation without alert
           }
         } catch (error) {
           console.error("Error checking verification:", error);
@@ -91,15 +90,31 @@ const SignUpScreen = ({ navigation }) => {
   };
 
   const handleSignUp = async () => {
-    if (getEmailValidationStatus && email !== "" && username !== "" && fullName !== "") {
-      setIsSubmitting(true);
-      try {
-        await authService.signUp(email, password, fullName, username);
-        setIsVerificationSent(true);
-      } catch (error) {
-        console.error("Signup error:", error);
-        Alert.alert("Error", error.message);
-      }
+    if (!getEmailValidationStatus || !username || !password || !fullName) {
+      Alert.alert('Error', 'Please fill all fields correctly');
+      return;
+    }
+
+    if (usernameError || fullNameError) {
+      Alert.alert('Error', 'Please fix the errors before continuing');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Sign up with auth service
+      const user = await authService.signUp(
+        email.trim(),
+        password,
+        fullName.trim(),
+        username.trim()
+      );
+
+      setIsVerificationSent(true);
+      
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -118,13 +133,9 @@ const SignUpScreen = ({ navigation }) => {
             We've sent a verification link to{'\n'}
             <Text style={styles.emailText}>{email}</Text>
           </Text>
-          
-          <TouchableOpacity
-            style={styles.modalButton}
-            onPress={() => setIsVerificationSent(false)}
-          >
-            <Text style={styles.modalButtonText}>OK</Text>
-          </TouchableOpacity>
+          <Text style={styles.modalSubText}>
+            Once verified, you'll be automatically redirected to login
+          </Text>
         </View>
       </View>
     </Modal>
@@ -464,6 +475,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
+  modalSubText: {
+    color: '#72767d',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 16,
+    fontStyle: 'italic'
+  }
 });
 
 export default SignUpScreen;
