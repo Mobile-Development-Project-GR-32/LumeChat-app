@@ -1,6 +1,32 @@
 import React from 'react';
-import { View, Text, SectionList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, SectionList, StyleSheet, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+
+const renderUserItem = ({ item }) => {
+    console.log('Rendering user item:', item); // Add this debug log
+    return (
+        <TouchableOpacity style={styles.itemContainer}>
+            {item.profilePic ? (
+                <Image 
+                    source={{ uri: item.profilePic }}
+                    style={styles.userAvatar}
+                    defaultSource={require('../../assets/default-avatar.png')}
+                />
+            ) : (
+                <View style={[styles.iconContainer, styles.userIcon]}>
+                    <Text style={styles.userInitial}>
+                        {item.fullName?.charAt(0).toUpperCase() || '?'}
+                    </Text>
+                </View>
+            )}
+            <View style={styles.itemContent}>
+                <Text style={styles.itemName}>{item.fullName}</Text>
+                <Text style={styles.itemUsername}>@{item.username}</Text>
+            </View>
+            <MaterialIcons name="chevron-right" size={24} color="#8e9297" />
+        </TouchableOpacity>
+    );
+};
 
 const SearchResults = ({ results, isLoading }) => {
     const sections = [
@@ -23,6 +49,9 @@ const SearchResults = ({ results, isLoading }) => {
     ].filter(section => section.data.length > 0);
 
     const renderItem = ({ item, section }) => {
+        if (section.title === 'Users') {
+            return renderUserItem({ item });
+        }
         const isUser = section.title === 'Users';
         return (
             <TouchableOpacity style={styles.itemContainer}>
@@ -149,7 +178,18 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
-    }
+    },
+    userAvatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        marginRight: 12,
+    },
+    itemUsername: {
+        color: '#72767d',
+        fontSize: 14,
+        marginTop: 2,
+    },
 });
 
 export default SearchResults;

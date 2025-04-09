@@ -10,7 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector } from 'react-redux';
 import { channelService } from '../services/channel.service';
 
-const CreateChannelScreen = ({ navigation, route }) => {
+const CreateChannelScreen = ({ navigation }) => {
   const user = useSelector((state) => state.user);
   const [channelName, setChannelName] = useState('');
   const [category, setCategory] = useState('GENERAL');
@@ -20,6 +20,8 @@ const CreateChannelScreen = ({ navigation, route }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [description, setDescription] = useState('');
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const categories = [
     'INFORMATION',
@@ -90,91 +92,34 @@ const CreateChannelScreen = ({ navigation, route }) => {
     }
   };
 
-  const checkDuplicateChannel = (name) => {
-    const channels = route.params?.existingChannels || {};
-    const normalizedName = name.toLowerCase().trim();
-    
-    // Check both public and private channels
-    for (const type of ['public', 'private']) {
-      if (channels[type]) {
-        for (const categoryGroup of channels[type]) {
-          const exists = categoryGroup.channels.some(
-            ch => ch.name.toLowerCase().trim() === normalizedName
-          );
-          if (exists) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    const trimmedName = channelName.trim();
-
-    // Channel name validation
-    if (!trimmedName) {
-      newErrors.channelName = 'Channel name is required';
-    } else if (trimmedName.length < 3) {
-      newErrors.channelName = 'Channel name must be at least 3 characters';
-    } else if (trimmedName.length > 20) {
-      newErrors.channelName = 'Channel name must not exceed 20 characters';
-    } else if (checkDuplicateChannel(trimmedName)) {
-      newErrors.channelName = 'This channel name already exists. Please choose a different name.';
-      Alert.alert(
-        'Duplicate Channel',
-        'A channel with this name already exists. Please choose a different name.',
-        [{ text: 'OK' }]
-      );
-    }
-
-    // Category validation
-    if (!category || category === 'Select a category') {
-      newErrors.category = 'Please select a category';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleCreateChannel = async () => {
-    if (!validateForm()) return;
-
-    setIsSubmitting(true);
     try {
+        if (!channelName.trim()) {
+            Alert.alert('Error', 'Channel name is required');
+            return;
+        }
+
+        setIsLoading(true);
         const channelData = {
             name: channelName.trim(),
-            category: category,
-            isPublic: isPublic,
             description: description.trim(),
-            coverImage: coverImage // This is now optional
+            isPublic: isPublic,
+            category: category,
+            members: selectedUsers || []
         };
 
-        console.log('Submitting channel data:', channelData);
-        const newChannel = await channelService.createChannel(user._id, channelData);
-        
-        console.log('Channel created:', newChannel);
-        Alert.alert(
-            'Success',
-            'Channel created successfully!',
-            [{
-                text: 'OK',
-                onPress: () => {
-                    // Ensure we're not creating a new state update if the component is unmounted
-                    navigation.navigate('HomeScreen', { refresh: true });
-                }
-            }]
-        );
+        console.log('Sending channel data:', channelData);
+        const createdChannel = await channelService.createChannel(user._id, channelData);
+
+        navigation.navigate('HomeScreen', { 
+            refresh: true,
+            newChannel: createdChannel
+        });
     } catch (error) {
         console.error('Create channel error:', error);
-        Alert.alert(
-            'Error',
-            'Failed to create channel. Please try again.'
-        );
+        Alert.alert('Error', error.message || 'Failed to create channel');
     } finally {
-        setIsSubmitting(false);
+        setIsLoading(false);
     }
   };
 

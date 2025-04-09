@@ -1,125 +1,58 @@
-const API_URL = 'http://192.168.0.56:3000/api';  // Use your machine's IP address
-
-// Valid channel categories
-const VALID_CATEGORIES = ['INFORMATION', 'GENERAL', 'STUDY_GROUPS', 'PROJECTS', 'VOICE_CHANNELS'];
+const API_URL = 'http://192.168.0.56:3000/api';
 
 export const channelService = {
-    // Headers configuration
     getHeaders: (userId) => ({
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
         'user-id': userId
     }),
 
-    // Get all public channels
-    getPublicChannels: async (userId) => {
-        try {
-            console.log('Fetching public channels with userId:', userId);
-            const response = await fetch(`${API_URL}/channels/get-public`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'user-id': userId
-                }
-            });
+   // Create new channel
+   createChannel: async (userId, channelData) => {
+    try {
+        // Ensure isPublic is boolean
+        const data = {
+            ...channelData,
+            isPublic: Boolean(channelData.isPublic)
+        };
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+        console.log('Sending channel data:', data);
 
-            const data = await response.json();
-            console.log('Raw public channels data:', data);
-            return Array.isArray(data) ? data : [];
-        } catch (error) {
-            console.error('Error fetching public channels:', error);
-            return [];
+        const response = await fetch(`${API_URL}/channels/create`, {
+            method: 'POST',
+            headers: channelService.getHeaders(userId),
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to create channel');
         }
-    },
 
-    // Get user's private channels
-    getPrivateChannels: async (userId) => {
-        try {
-            console.log('Fetching private channels with userId:', userId);
-            const response = await fetch(`${API_URL}/channels/get-private`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'user-id': userId
-                }
-            });
+        return response.json();
+    } catch (error) {
+        console.error('Channel creation error:', error);
+        throw error;
+    }
+},
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('Raw private channels data:', data);
-            return Array.isArray(data) ? data : [];
-        } catch (error) {
-            console.error('Error fetching private channels:', error);
-            return [];
-        }
-    },
-
-    // Create new channel
-    createChannel: async (userId, channelData) => {
-        try {
-            console.log('Creating channel with data:', channelData);
-
-            const formData = new FormData();
-            formData.append('name', channelData.name);
-            formData.append('category', channelData.category);
-            formData.append('isPublic', String(channelData.isPublic));
-            formData.append('description', channelData.description || '');
-            formData.append('createdBy', userId);
-
-            if (channelData.coverImage) {
-                const imageUri = channelData.coverImage;
-                const filename = imageUri.split('/').pop();
-                const match = /\.(\w+)$/.exec(filename);
-                const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-                formData.append('coverImage', {
-                    uri: imageUri,
-                    name: filename,
-                    type
-                });
-            }
-
-            const response = await fetch(`${API_URL}/channels/create`, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'user-id': userId,
-                    'Content-Type': 'multipart/form-data',
-                },
-                body: formData
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Failed to create channel');
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Channel creation error:', error);
-            throw error;
-        }
-    },
-
-    // Update channel details
-    updateChannel: async (userId, channelId, updates) => {
+    // Update channel settings
+    updateChannel: async (userId, channelId, updateData) => {
         try {
             const response = await fetch(`${API_URL}/channels/${channelId}`, {
                 method: 'PUT',
                 headers: channelService.getHeaders(userId),
-                body: JSON.stringify(updates)
+                body: JSON.stringify(updateData)
             });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to update channel');
+            }
+
             return response.json();
         } catch (error) {
-            console.error('Error updating channel:', error);
+            console.error('Channel update error:', error);
             throw error;
         }
     },
@@ -132,9 +65,15 @@ export const channelService = {
                 headers: channelService.getHeaders(userId),
                 body: JSON.stringify({ action, role })
             });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to manage member');
+            }
+
             return response.json();
         } catch (error) {
-            console.error('Error managing member:', error);
+            console.error('Member management error:', error);
             throw error;
         }
     },
@@ -146,23 +85,54 @@ export const channelService = {
                 method: 'DELETE',
                 headers: channelService.getHeaders(userId)
             });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete channel');
+            }
+
             return response.json();
         } catch (error) {
-            console.error('Error deleting channel:', error);
+            console.error('Channel deletion error:', error);
             throw error;
         }
     },
 
-    // Search channels
-    searchChannels: async (userId, query) => {
+    // Get public channels
+    getPublicChannels: async (userId) => {
         try {
-            const response = await fetch(`${API_URL}/search?query=${encodeURIComponent(query)}`, {
+            const response = await fetch(`${API_URL}/channels/get-public`, {
                 headers: channelService.getHeaders(userId)
             });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch public channels');
+            }
+
             return response.json();
         } catch (error) {
-            console.error('Error searching channels:', error);
+            console.error('Public channels fetch error:', error);
+            throw error;
+        }
+    },
+
+    // Get private channels
+    getPrivateChannels: async (userId) => {
+        try {
+            const response = await fetch(`${API_URL}/channels/get-private`, {
+                headers: channelService.getHeaders(userId)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch private channels');
+            }
+
+            return response.json();
+        } catch (error) {
+            console.error('Private channels fetch error:', error);
             throw error;
         }
     }
 };
+
+export default channelService;
