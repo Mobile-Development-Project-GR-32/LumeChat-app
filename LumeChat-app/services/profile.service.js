@@ -155,6 +155,19 @@ export const profileService = {
         }
     },
 
+   // Get profile QR code
+   getProfileQR: async (userId) => {
+    try {
+        const response = await fetch(`${API_URL}/profile/qr`, {
+            headers: profileService.getHeaders(userId)
+        });
+        return response.json();
+    } catch (error) {
+        console.error('QR code error:', error);
+        throw error;
+    }
+},
+
     // Add subscriber methods
     subscribe: (event, callback) => {
         if (!EVENT_BUS.has(event)) {

@@ -441,6 +441,7 @@ const ProfileScreen = ({ navigation }) => {
                     {[
                         { icon: 'person', label: 'Full Name', value: user?.fullName, key: 'fullName' },
                         { icon: 'phone', label: 'Phone Number', value: user?.phoneNumber || 'Add phone number', key: 'phoneNumber' },
+                        { icon: 'alternate-email', label: 'Username', value: `@${user?.username}`, readonly: true },
                         { icon: 'email', label: 'Email', value: user?.email, readonly: true }
                     ].map((detail, index) => (
                         <TouchableOpacity 
@@ -464,7 +465,9 @@ const ProfileScreen = ({ navigation }) => {
                                     <Text style={styles.detailValue}>{detail.value}</Text>
                                 )}
                             </View>
-                            <MaterialIcons name="edit" size={20} color="#8e9297" />
+                            {!detail.readonly && (
+                                <MaterialIcons name="edit" size={20} color="#8e9297" />
+                            )}
                         </TouchableOpacity>
                     ))}
                 </View>

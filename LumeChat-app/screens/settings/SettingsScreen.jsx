@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     avatar: {
-        borderWidth: 2,
+        borderWidth: 0,
         borderColor: '#FFFFFF',
     },
     profileInfo: {

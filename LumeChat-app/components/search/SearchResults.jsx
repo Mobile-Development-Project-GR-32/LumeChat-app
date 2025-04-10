@@ -1,34 +1,44 @@
 import React from 'react';
 import { View, Text, SectionList, StyleSheet, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-
-const renderUserItem = ({ item }) => {
-    console.log('Rendering user item:', item); // Add this debug log
-    return (
-        <TouchableOpacity style={styles.itemContainer}>
-            {item.profilePic ? (
-                <Image 
-                    source={{ uri: item.profilePic }}
-                    style={styles.userAvatar}
-                    defaultSource={require('../../assets/default-avatar.png')}
-                />
-            ) : (
-                <View style={[styles.iconContainer, styles.userIcon]}>
-                    <Text style={styles.userInitial}>
-                        {item.fullName?.charAt(0).toUpperCase() || '?'}
-                    </Text>
-                </View>
-            )}
-            <View style={styles.itemContent}>
-                <Text style={styles.itemName}>{item.fullName}</Text>
-                <Text style={styles.itemUsername}>@{item.username}</Text>
-            </View>
-            <MaterialIcons name="chevron-right" size={24} color="#8e9297" />
-        </TouchableOpacity>
-    );
-};
+import { useNavigation } from '@react-navigation/native';
 
 const SearchResults = ({ results, isLoading }) => {
+    const navigation = useNavigation();
+
+    const handleUserPress = (userId) => {
+        navigation.navigate('UserProfile', { userId });
+    };
+
+    const renderUserItem = ({ item }) => {
+        console.log('Rendering user item:', item); // Add this debug log
+        return (
+            <TouchableOpacity 
+                style={styles.itemContainer}
+                onPress={() => handleUserPress(item._id)}
+            >
+                {item.profilePic ? (
+                    <Image 
+                        source={{ uri: item.profilePic }}
+                        style={styles.userAvatar}
+                        defaultSource={require('../../assets/default-avatar.png')}
+                    />
+                ) : (
+                    <View style={[styles.iconContainer, styles.userIcon]}>
+                        <Text style={styles.userInitial}>
+                            {item.fullName?.charAt(0).toUpperCase() || '?'}
+                        </Text>
+                    </View>
+                )}
+                <View style={styles.itemContent}>
+                    <Text style={styles.itemName}>{item.fullName}</Text>
+                    <Text style={styles.itemUsername}>@{item.username}</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={24} color="#8e9297" />
+            </TouchableOpacity>
+        );
+    };
+
     const sections = [
         {
             title: 'Users',
