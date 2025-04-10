@@ -1,17 +1,20 @@
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, TouchableOpacity, Share } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, Animated, TouchableOpacity, Share, Image, ActivityIndicator, Alert } from 'react-native';
 import { Text } from 'react-native-paper';
-import QRCode from 'react-native-qrcode-svg';
 import { useSelector } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
+import { profileService } from '../../services/profile.service';  // Fixed import path
 
 const QRCodeScreen = () => {
     const user = useSelector(state => state.user);
+    const [qrData, setQrData] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
     const scaleAnim = useRef(new Animated.Value(0)).current;
     const rotateAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+        loadQRCode();
         Animated.parallel([
             Animated.spring(scaleAnim, {
                 toValue: 1,
@@ -27,6 +30,19 @@ const QRCodeScreen = () => {
         ]).start();
     }, []);
 
+    const loadQRCode = async () => {
+        try {
+            setIsLoading(true);
+            const data = await profileService.getProfileQR(user._id);
+            setQrData(data.qrCode);
+        } catch (error) {
+            console.error('Failed to load QR code:', error);
+            Alert.alert('Error', 'Failed to load QR code');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const rotation = rotateAnim.interpolate({
         inputRange: [0, 1],
         outputRange: ['0deg', '360deg'],
@@ -34,11 +50,20 @@ const QRCodeScreen = () => {
 
     const handleShare = async () => {
         try {
+            const shareData = {
+                userId: user?._id,
+                username: user?.username,
+                fullName: user?.fullName,
+                profilePic: user?.profilePic
+            };
+            
             await Share.share({
-                message: `Connect with me on LumeChat! Username: @${user?.username}`,
+                message: `Connect with me on LumeChat!\n\nName: ${shareData.fullName}\nUsername: @${shareData.username}\n\nOpen LumeChat to connect!`,
+                title: 'Connect on LumeChat'
             });
         } catch (error) {
             console.error('Error sharing:', error);
+            Alert.alert('Error', 'Failed to share profile');
         }
     };
 
@@ -63,15 +88,15 @@ const QRCodeScreen = () => {
                         colors={['#7289DA', '#4752C4']}
                         style={styles.qrWrapper}
                     >
-                        <QRCode
-                            value={JSON.stringify({
-                                userId: user?._id,
-                                username: user?.username,
-                            })}
-                            size={250}
-                            color="#FFFFFF"
-                            backgroundColor="transparent"
-                        />
+                        {isLoading ? (
+                            <ActivityIndicator size="large" color="#FFFFFF" />
+                        ) : (
+                            <Image 
+                                source={{ uri: qrData }}
+                                style={styles.qrImage}
+                                resizeMode="contain"
+                            />
+                        )}
                     </LinearGradient>
                 </Animated.View>
 
@@ -130,6 +155,10 @@ const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 20,
         elevation: 4,
+    },
+    qrImage: {
+        width: 250,
+        height: 250,
     },
     infoContainer: {
         alignItems: 'center',

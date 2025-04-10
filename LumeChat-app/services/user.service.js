@@ -48,7 +48,7 @@ export const userService = {
             throw error;
         }
     },
-
+ // Get friends list
     getFriends: async (userId) => {
         try {
             const response = await fetch(`${API_URL}/users/friends`, {
