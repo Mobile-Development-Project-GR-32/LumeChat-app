@@ -1,4 +1,5 @@
 import { View, Alert } from "react-native"
+import { useSelector } from "react-redux";
 
 const ChatScreen = ({route}) => {
     const currentChannel = route.params;
