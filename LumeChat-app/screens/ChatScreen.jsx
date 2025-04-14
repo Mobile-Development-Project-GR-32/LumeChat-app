@@ -1,5 +1,7 @@
-import { View, Alert } from "react-native"
+import { View, Alert, FlatList, TextInput, Text } from "react-native"
 import { useSelector } from "react-redux";
+import { useState, useEffect } from "react";
+import { messageService } from "../services/message.service"
 
 const ChatScreen = ({route}) => {
     const currentChannel = route.params;
@@ -9,10 +11,10 @@ const ChatScreen = ({route}) => {
     const [isLoading, setIsLoading] = useState(false)
 
     useEffect(() => {
-        fetchMessages();
+        fetchMessages(currentChannel.name);
     }, [])
     
-    const fetchMessages = async () => {
+    const fetchMessages = async (channel) => {
         setIsLoading(true)
         try {
             const messageData = await messageService.getMessagesByChannelName(channel)
