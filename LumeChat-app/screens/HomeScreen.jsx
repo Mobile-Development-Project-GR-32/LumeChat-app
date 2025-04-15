@@ -6,10 +6,11 @@ import { channelService } from '../services/channel.service';
 import BottomNavBar from '../components/BottomNavBar';
 import SideDrawer from '../components/SideDrawer';
 import SearchScreen from './SearchScreen';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const ChannelItem = ({ channel, navigation }) => (
   <TouchableOpacity 
-    onPress={navigation.navigate('ChatScreen', {channel: channel})}
+    onPress={() => navigation.navigate('ChatScreen', {channel: channel})}
     style={[styles.channelItem, channel.isActive && styles.activeChannel]}
   >
     <View style={styles.channelIconContainer}>
