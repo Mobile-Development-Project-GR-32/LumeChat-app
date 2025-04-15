@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import apiConfig from '../config/api.config';
 
-const API_URL = 'http://192.168.0.56:3000/api';
+const API_URL = apiConfig.API_URL;
 
 const EVENT_BUS = new Map();
 

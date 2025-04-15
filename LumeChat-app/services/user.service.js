@@ -1,4 +1,6 @@
-const API_URL = 'http://192.168.0.56:3000/api';  // Change localhost to your IP address
+import apiConfig from '../config/api.config';
+
+const API_URL = apiConfig.API_URL;  // Use API URL from environment variables
 
 export const userService = {
     // Headers configuration

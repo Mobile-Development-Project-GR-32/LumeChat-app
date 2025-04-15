@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 export default {
   expo: {
     name: "LumeChat-app",
@@ -55,7 +57,8 @@ export default {
         messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
         appId: process.env.FIREBASE_APP_ID,
         measurementId: process.env.FIREBASE_MEASUREMENT_ID
-      }
+      },
+      apiUrl: process.env.API_URL
     }
   }
 };
