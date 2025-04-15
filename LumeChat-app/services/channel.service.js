@@ -1,4 +1,6 @@
-const API_URL = 'http://192.168.0.56:3000/api';
+import apiConfig from '../config/api.config';
+
+const API_URL = apiConfig.API_URL;
 
 export const channelService = {
     getHeaders: (userId) => ({

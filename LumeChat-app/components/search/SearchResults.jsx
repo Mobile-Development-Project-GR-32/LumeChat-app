@@ -1,21 +1,36 @@
 import React from 'react';
-import { View, Text, SectionList, StyleSheet, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
+import { View, Text, SectionList, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 const SearchResults = ({ results, isLoading }) => {
     const navigation = useNavigation();
 
-    const handleUserPress = (userId) => {
-        navigation.navigate('UserProfile', { userId });
+    const handleUserPress = (item) => {
+        // Make sure we're passing a valid user ID to UserProfile screen
+        if (item) {
+            // Handle different user data structures
+            const userId = item._id || item.userId || item.id;
+            
+            if (userId) {
+                console.log('Navigating to UserProfile with userId:', userId);
+                navigation.navigate('UserProfile', { userId });
+            } else {
+                console.error('Invalid user data:', item);
+                Alert.alert('Error', 'Cannot view this user profile');
+            }
+        } else {
+            console.error('Invalid user item:', item);
+            Alert.alert('Error', 'Cannot view this user profile');
+        }
     };
 
     const renderUserItem = ({ item }) => {
-        console.log('Rendering user item:', item); // Add this debug log
+        console.log('Rendering user item:', item); // Debug log
         return (
             <TouchableOpacity 
                 style={styles.itemContainer}
-                onPress={() => handleUserPress(item._id)}
+                onPress={() => handleUserPress(item)}
             >
                 {item.profilePic ? (
                     <Image 

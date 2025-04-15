@@ -20,10 +20,10 @@ import PrivacyScreen from "../screens/settings/PrivacyScreen";
 import SecurityScreen from "../screens/settings/SecurityScreen";
 import ThemeScreen from "../screens/settings/ThemeScreen";
 import QRCodeScreen from "../screens/settings/QRCodeScreen";
-import UserProfileScreen from "../screens/UserProfileScreen";
 
 // Import chatbot screen
 import ChatbotScreen from "../screens/ChatbotScreen";
+import UserProfileScreen from "../screens/UserProfileScreen";  // Add this import
 
 const Stack = createNativeStackNavigator();
 
@@ -70,6 +70,19 @@ const AppContent = () => {
         options={{
           headerShown: true,
           headerTitle: 'Profile',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+        initialParams={{ userId: null }} // Add initial params to avoid undefined
+      />
+      <Stack.Screen 
+        name="UserProfile" 
+        component={UserProfileScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'User Profile',
           headerStyle: {
             backgroundColor: '#2f3136',
           },
@@ -142,18 +155,6 @@ const AppContent = () => {
         options={{
           headerShown: true,
           headerTitle: 'QR Code',
-          headerStyle: {
-            backgroundColor: '#2f3136',
-          },
-          headerTintColor: '#fff',
-        }}
-      />
-      <Stack.Screen 
-        name="UserProfile" 
-        component={UserProfileScreen}
-        options={{
-          headerShown: true,
-          headerTitle: 'Profile',
           headerStyle: {
             backgroundColor: '#2f3136',
           },

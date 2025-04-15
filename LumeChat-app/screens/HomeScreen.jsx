@@ -7,6 +7,7 @@ import BottomNavBar from '../components/BottomNavBar';
 import SideDrawer from '../components/SideDrawer';
 import SearchScreen from './SearchScreen';
 import { LinearGradient } from 'expo-linear-gradient';
+import { userStatusManager } from '../utils/userStatusManager';
 
 const ChannelItem = ({ channel, navigation }) => (
   <TouchableOpacity 
@@ -108,6 +109,32 @@ const HomeScreen = ({ route, navigation }) => {
       navigation.setParams({ refresh: undefined });
     }
   }, [route.params?.refresh]);
+
+  useEffect(() => {
+    let statusTools = null;
+    
+    const initializeStatusManager = async () => {
+      if (user?._id) {
+        try {
+          // Initialize the status manager and store the returned tools
+          statusTools = await userStatusManager.initialize(user._id);
+          console.log('Status manager initialized successfully');
+        } catch (error) {
+          console.error('Failed to initialize status manager:', error);
+        }
+      }
+    };
+    
+    initializeStatusManager();
+    
+    // Clean up on unmount
+    return () => {
+      if (statusTools) {
+        statusTools.setStatus('offline');
+        statusTools.cleanup();
+      }
+    };
+  }, [user?._id]);
 
   const getProfileImage = () => {
     if (user?.profilePic) {
