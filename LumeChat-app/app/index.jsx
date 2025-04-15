@@ -22,6 +22,9 @@ import ThemeScreen from "../screens/settings/ThemeScreen";
 import QRCodeScreen from "../screens/settings/QRCodeScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";
 
+// Import chatbot screen
+import ChatbotScreen from "../screens/ChatbotScreen";
+
 const Stack = createNativeStackNavigator();
 
 const AppContent = () => {
@@ -157,6 +160,7 @@ const AppContent = () => {
           headerTintColor: '#fff',
         }}
       />
+      <Stack.Screen name="Chatbot" component={ChatbotScreen} />
     </Stack.Navigator>
   );
 };
