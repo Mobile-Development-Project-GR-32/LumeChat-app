@@ -1,39 +1,232 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Animated, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { userService } from '../services/user.service';
 import { useSelector } from 'react-redux';
+import { friendService } from '../services/friend.service';
+import { useNavigation } from '@react-navigation/native';
+import { userStatusManager } from '../utils/userStatusManager';
+
+const ContactItem = ({ contact, onPress, onAccept, onReject, onRemove, isPending = false }) => {
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  // Determine status color
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'online': return '#43B581';
+      case 'away': return '#FAA61A';
+      case 'do not disturb': return '#F04747';
+      default: return '#747F8D'; // Offline/invisible
+    }
+  };
+
+  // Get status from userStatusManager instead of contact.status
+  const status = isPending ? null : userStatusManager.getUserStatus(contact._id);
+
+  return (
+    <TouchableOpacity 
+      style={styles.contactItem}
+      onPress={() => onPress(contact)}
+      disabled={isPending} // Disable navigation for pending requests
+    >
+      <View style={styles.avatarContainer}>
+        {contact.profilePic ? (
+          <Image 
+            source={{ uri: contact.profilePic }} 
+            style={styles.avatar}
+            defaultSource={require('../assets/default-avatar.png')}
+          />
+        ) : (
+          <LinearGradient
+            colors={['#7289DA', '#5865F2']}
+            style={styles.avatar}
+          >
+            <Text style={styles.avatarText}>{getInitials(contact.fullName)}</Text>
+          </LinearGradient>
+        )}
+        {!isPending && (
+          <View 
+            style={[
+              styles.statusIndicator, 
+              { backgroundColor: getStatusColor(status) }
+            ]} 
+          />
+        )}
+      </View>
+      
+      <View style={styles.contactInfo}>
+        <Text style={styles.contactName} numberOfLines={1}>
+          {contact.fullName}
+        </Text>
+        
+        {isPending ? (
+          <Text style={styles.pendingText}>Pending Request</Text>
+        ) : (
+          <Text style={styles.statusText} numberOfLines={1}>
+            {status || 'Offline'}
+          </Text>
+        )}
+      </View>
+      
+      {isPending ? (
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.acceptButton]}
+            onPress={() => onAccept(contact)}
+          >
+            <MaterialIcons name="check" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.rejectButton]}
+            onPress={() => onReject(contact)}
+          >
+            <MaterialIcons name="close" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity 
+          style={styles.removeButton}
+          onPress={() => onRemove(contact)}
+        >
+          <MaterialIcons name="more-vert" size={20} color="#8E9297" />
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  );
+};
 
 const SideDrawer = ({ isOpen, drawerWidth }) => {
   const user = useSelector(state => state.user);
+  const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('contacts');
-  const [contacts, setContacts] = useState([]);
+  const [onlineContacts, setOnlineContacts] = useState([]);
+  const [offlineContacts, setOfflineContacts] = useState([]);
   const [pendingRequests, setPendingRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAddingContact, setIsAddingContact] = useState(false);
+  const [newContactId, setNewContactId] = useState('');
+  const [onlineStatuses, setOnlineStatuses] = useState({});
   const slideAnim = React.useRef(new Animated.Value(-drawerWidth)).current;
 
   const fetchData = async () => {
+    if (!user?._id) return;
+    
     setIsLoading(true);
     try {
-      const [contactsData, pendingData] = await Promise.all([
-        userService.getContacts(user._id),
-        userService.getPendingContacts(user._id)
-      ]);
-      setContacts(contactsData);
-      setPendingRequests(pendingData);
+      // Get friends list
+      const friends = await friendService.getFriends(user._id);
+      
+      // Save globally for status simulation
+      global.friendsList = friends || [];
+      
+      // Now properly separate online and offline friends
+      const online = [];
+      const offline = [];
+      
+      if (Array.isArray(friends)) {
+        friends.forEach(friend => {
+          // Check if the friend is online using userStatusManager
+          if (userStatusManager.isOnline(friend._id)) {
+            online.push(friend);
+          } else {
+            offline.push(friend);
+          }
+        });
+        
+        console.log(`Categorized friends: ${online.length} online, ${offline.length} offline`);
+      }
+      
+      setOnlineContacts(online);
+      setOfflineContacts(offline);
+      
+      // Get pending friend requests
+      try {
+        console.log("Fetching friend requests for user:", user._id);
+        const requests = await friendService.getFriendRequests(user._id);
+        console.log("Received friend requests:", requests);
+        
+        // Make sure we're properly handling the response - it should be an array
+        if (Array.isArray(requests)) {
+          setPendingRequests(requests);
+        } else {
+          console.warn("Friend requests not in expected format:", requests);
+          setPendingRequests([]);
+        }
+      } catch (requestError) {
+        console.error("Error fetching friend requests:", requestError);
+        setPendingRequests([]);
+      }
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching contacts:', error);
+      Alert.alert('Error', 'Failed to load contacts');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && user?._id) {
       fetchData();
+      
+      // Initialize status manager
+      const initStatusManager = async () => {
+        try {
+          const statusTools = await userStatusManager.initialize(user._id);
+          
+          // Subscribe to status updates
+          const unsubscribe = userStatusManager.subscribe((statuses) => {
+            console.log("Status update received in SideDrawer");
+            
+            // Get the current friends list
+            const allFriends = global.friendsList || [];
+            
+            if (allFriends.length > 0) {
+              // Re-categorize friends based on updated statuses
+              const online = [];
+              const offline = [];
+              
+              allFriends.forEach(friend => {
+                if (userStatusManager.isOnline(friend._id)) {
+                  online.push(friend);
+                } else {
+                  offline.push(friend);
+                }
+              });
+              
+              console.log(`After status update: ${online.length} online, ${offline.length} offline`);
+              
+              // Update state with new categorized lists
+              setOnlineContacts(online);
+              setOfflineContacts(offline);
+            }
+          });
+          
+          return () => {
+            unsubscribe();
+            if (statusTools && typeof statusTools.cleanup === 'function') {
+              statusTools.cleanup();
+            }
+          };
+        } catch (error) {
+          console.error("Error initializing status manager:", error);
+          return () => {}; // Return empty cleanup function on error
+        }
+      };
+      
+      const cleanupPromise = initStatusManager();
+      
+      return () => {
+        cleanupPromise.then(cleanup => {
+          if (cleanup && typeof cleanup === 'function') {
+            cleanup();
+          }
+        }).catch(err => console.error('Error during cleanup:', err));
+      };
     }
-  }, [isOpen]);
+  }, [isOpen, user?._id]);
 
   useEffect(() => {
     Animated.timing(slideAnim, {
@@ -43,30 +236,50 @@ const SideDrawer = ({ isOpen, drawerWidth }) => {
     }).start();
   }, [isOpen, drawerWidth]);
 
-  const handleAcceptRequest = async (requesterId) => {
+  const handleContactPress = (contact) => {
+    // Navigate to direct message with this contact
+    navigation.navigate('ChatScreen', { 
+      userId: contact._id,
+      userName: contact.fullName,
+      userAvatar: contact.profilePic
+    });
+  };
+
+  const handleAcceptRequest = async (contact) => {
     try {
-      await userService.acceptContactRequest(user._id, requesterId);
-      Alert.alert('Success', 'Contact request accepted');
-      fetchData();
+      setIsLoading(true);
+      console.log("Accepting friend request from:", contact._id);
+      await friendService.respondToFriendRequest(user._id, contact._id, 'accept');
+      console.log("Request accepted, refreshing data");
+      await fetchData(); // Refresh all data after accepting
+      Alert.alert('Success', `You are now friends with ${contact.fullName}`);
     } catch (error) {
-      Alert.alert('Error', error.message);
+      console.error('Error accepting request:', error);
+      Alert.alert('Error', 'Failed to accept friend request');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleRejectRequest = async (requesterId) => {
+  const handleRejectRequest = async (contact) => {
     try {
-      await userService.rejectContactRequest(user._id, requesterId);
-      Alert.alert('Success', 'Contact request rejected');
-      fetchData();
+      setIsLoading(true);
+      console.log("Rejecting friend request from:", contact._id);
+      await friendService.respondToFriendRequest(user._id, contact._id, 'reject');
+      console.log("Request rejected, refreshing data");
+      await fetchData(); // Refresh all data after rejecting
     } catch (error) {
-      Alert.alert('Error', error.message);
+      console.error('Error rejecting request:', error);
+      Alert.alert('Error', 'Failed to reject friend request');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleRemoveContact = async (contactId) => {
+  const handleRemoveContact = (contact) => {
     Alert.alert(
       'Remove Contact',
-      'Are you sure you want to remove this contact?',
+      `Are you sure you want to remove ${contact.fullName} from your contacts?`,
       [
         { text: 'Cancel', style: 'cancel' },
         { 
@@ -74,10 +287,11 @@ const SideDrawer = ({ isOpen, drawerWidth }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await userService.removeContact(user._id, contactId);
-              fetchData();
+              await friendService.removeFriend(user._id, contact._id);
+              fetchData(); // Refresh data
             } catch (error) {
-              Alert.alert('Error', error.message);
+              console.error('Error removing contact:', error);
+              Alert.alert('Error', 'Failed to remove contact');
             }
           }
         }
@@ -86,70 +300,94 @@ const SideDrawer = ({ isOpen, drawerWidth }) => {
   };
 
   const handleAddContact = async () => {
-    const username = await new Promise((resolve) => {
-      Alert.prompt(
-        'Add Contact',
-        'Enter username:',
-        [
-          { text: 'Cancel', onPress: () => resolve(null) },
-          { text: 'Send Request', onPress: (text) => resolve(text) }
-        ]
-      );
-    });
-
-    if (username) {
-      try {
-        await userService.sendContactRequest(user._id, username);
-        Alert.alert('Success', 'Contact request sent!');
-        fetchData();
-      } catch (error) {
-        Alert.alert('Error', error.message);
+    try {
+      if (!newContactId) {
+        Alert.alert('Error', 'Please enter a user ID');
+        return;
       }
+      
+      await friendService.sendFriendRequest(user._id, newContactId);
+      setIsAddingContact(false);
+      setNewContactId('');
+      fetchData(); // Refresh data
+      Alert.alert('Success', 'Friend request sent');
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      Alert.alert('Error', 'Failed to send friend request');
     }
   };
 
-  const renderContact = (contact, isPending = false) => (
-    <TouchableOpacity 
-      key={contact._id}
-      style={[styles.contactItem, contact.isActive && styles.activeContact]}
-    >
-      <View style={[styles.avatar, { backgroundColor: contact.color || '#7289da' }]}>
-        <Text style={styles.avatarText}>
-          {contact.username?.[0]?.toUpperCase() || '?'}
-        </Text>
-        <View style={[styles.statusIndicator, 
-          { backgroundColor: contact.isOnline ? '#43b581' : '#747f8d' }]} 
-        />
-      </View>
-      <View style={styles.contactInfo}>
-        <Text style={styles.contactName}>{contact.username}</Text>
-        {isPending && <Text style={styles.pendingText}>Pending</Text>}
-      </View>
-      {isPending ? (
-        <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            onPress={() => handleAcceptRequest(contact._id)}
-            style={[styles.actionButton, styles.acceptButton]}
-          >
-            <MaterialIcons name="check" size={20} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => handleRejectRequest(contact._id)}
-            style={[styles.actionButton, styles.rejectButton]}
-          >
-            <MaterialIcons name="close" size={20} color="#fff" />
-          </TouchableOpacity>
+  const showAddContactModal = () => {
+    Alert.prompt(
+      'Add Friend',
+      'Enter user ID',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Send Request', onPress: (id) => {
+          if (id) {
+            friendService.sendFriendRequest(user._id, id)
+              .then(() => {
+                fetchData();
+                Alert.alert('Success', 'Friend request sent');
+              })
+              .catch(error => {
+                Alert.alert('Error', error.message || 'Failed to send friend request');
+              });
+          }
+        }}
+      ],
+      'plain-text'
+    );
+  };
+
+  const renderContactList = () => {
+    return (
+      <>
+        {pendingRequests && pendingRequests.length > 0 && (
+          <View style={styles.pendingSection}>
+            <Text style={[styles.sectionTitle, styles.pendingSectionTitle]}>
+              FRIEND REQUESTS — {pendingRequests.length}
+            </Text>
+            {pendingRequests.map((request) => (
+              <ContactItem
+                key={request._id || request.id || Math.random().toString()}
+                contact={request}  // This now contains profilePic from our transform
+                isPending={true}
+                onAccept={handleAcceptRequest}
+                onReject={handleRejectRequest}
+                onPress={() => {}} // Disable navigation for pending requests
+              />
+            ))}
+            <View style={styles.sectionDivider} />
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>ONLINE — {onlineContacts.length}</Text>
+          {onlineContacts.map((contact) => (
+            <ContactItem
+              key={contact._id || contact.id}
+              contact={contact}
+              onPress={handleContactPress}
+              onRemove={handleRemoveContact}
+            />
+          ))}
         </View>
-      ) : (
-        <TouchableOpacity 
-          onPress={() => handleRemoveContact(contact._id)}
-          style={styles.removeButton}
-        >
-          <MaterialIcons name="person-remove" size={20} color="#f04747" />
-        </TouchableOpacity>
-      )}
-    </TouchableOpacity>
-  );
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>OFFLINE — {offlineContacts.length}</Text>
+          {offlineContacts.map((contact) => (
+            <ContactItem
+              key={contact._id}
+              contact={contact}
+              onPress={handleContactPress}
+              onRemove={handleRemoveContact}
+            />
+          ))}
+        </View>
+      </>
+    );
+  };
 
   return (
     <Animated.View 
@@ -161,35 +399,49 @@ const SideDrawer = ({ isOpen, drawerWidth }) => {
         }
       ]}
     >
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#2F3136', '#202225']}
+        style={styles.header}
+      >
         <Text style={styles.headerText}>Direct Messages</Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAddContact}>
-          <MaterialIcons name="add" size={24} color="#8e9297" />
+        <TouchableOpacity style={styles.addButton} onPress={showAddContactModal}>
+          <LinearGradient
+            colors={['#7289DA', '#5865F2']}
+            style={styles.addButtonGradient}
+          >
+            <MaterialIcons name="person-add" size={20} color="#FFFFFF" />
+          </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {isLoading ? (
-        <ActivityIndicator size="large" color="#7289da" style={styles.loader} />
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color="#7289DA" />
+          <Text style={styles.loaderText}>Loading contacts...</Text>
+        </View>
       ) : (
-        <ScrollView style={styles.contactsList}>
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>ONLINE — {contacts.filter(c => c.isOnline).length}</Text>
-            {contacts
-              .filter(contact => contact.isOnline)
-              .map(contact => renderContact(contact))}
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>OFFLINE — {contacts.filter(c => !c.isOnline).length}</Text>
-            {contacts
-              .filter(contact => !contact.isOnline)
-              .map(contact => renderContact(contact))}
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>PENDING REQUESTS — {pendingRequests.length}</Text>
-            {pendingRequests.map(contact => renderContact(contact, true))}
-          </View>
+        <ScrollView style={styles.scrollContainer}>
+          {renderContactList()}
+          
+          {onlineContacts.length === 0 && offlineContacts.length === 0 && pendingRequests.length === 0 && (
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="people" size={48} color="#72767D" />
+              <Text style={styles.emptyTitle}>No contacts yet</Text>
+              <Text style={styles.emptyText}>Add friends to start chatting</Text>
+              <TouchableOpacity 
+                style={styles.emptyButton}
+                onPress={showAddContactModal}
+              >
+                <LinearGradient
+                  colors={['#7289DA', '#5865F2']}
+                  style={styles.emptyButtonGradient}
+                >
+                  <MaterialIcons name="person-add" size={18} color="#FFFFFF" />
+                  <Text style={styles.emptyButtonText}>Add Friend</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
         </ScrollView>
       )}
     </Animated.View>
@@ -202,9 +454,7 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: '#2f3136',
-    borderRightWidth: 1,
-    borderRightColor: '#202225',
+    backgroundColor: '#2F3136',
     zIndex: 100,
     elevation: 5,
     shadowColor: '#000',
@@ -216,37 +466,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    paddingTop: 50,
     borderBottomWidth: 1,
     borderBottomColor: '#202225',
   },
   headerText: {
-    color: '#ffffff',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
   addButton: {
-    padding: 4,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
-  contactsList: {
+  addButtonGradient: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 16,
+  },
+  scrollContainer: {
     flex: 1,
   },
   section: {
     paddingTop: 16,
+    paddingBottom: 8,
   },
   sectionTitle: {
-    color: '#8e9297',
+    color: '#8E9297',
     fontSize: 12,
     fontWeight: '600',
     paddingHorizontal: 16,
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 8,
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    marginBottom: 2,
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 12,
   },
   avatar: {
     width: 32,
@@ -254,58 +519,115 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
   },
   avatarText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
   statusIndicator: {
     position: 'absolute',
     bottom: -2,
     right: -2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     borderWidth: 2,
-    borderColor: '#2f3136',
+    borderColor: '#2F3136',
+  },
+  contactInfo: {
+    flex: 1,
   },
   contactName: {
-    color: '#dcddde',
+    color: '#DCDDDE',
     fontSize: 16,
+  },
+  statusText: {
+    color: '#8E9297',
+    fontSize: 12,
+  },
+  removeButton: {
+    padding: 4,
   },
   actionButtons: {
     flexDirection: 'row',
     gap: 8,
   },
   actionButton: {
-    padding: 8,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   acceptButton: {
-    backgroundColor: '#43b581',
+    backgroundColor: '#43B581',
   },
   rejectButton: {
-    backgroundColor: '#f04747',
-  },
-  removeButton: {
-    padding: 8,
+    backgroundColor: '#F04747',
   },
   pendingText: {
-    color: '#faa61a',
+    color: '#FAA61A',
     fontSize: 12,
   },
-  contactInfo: {
+  loaderContainer: {
     flex: 1,
-    marginLeft: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  loader: {
+  loaderText: {
+    color: '#B9BBBE',
+    marginTop: 12,
+    fontSize: 14,
+  },
+  emptyContainer: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 40,
+  },
+  emptyTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+  },
+  emptyText: {
+    color: '#B9BBBE',
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  emptyButton: {
     marginTop: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
-  activeContact: {
-    backgroundColor: 'rgba(114, 137, 218, 0.1)',
+  emptyButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
+  emptyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  pendingSection: {
+    marginBottom: 16,
+  },
+  pendingSectionTitle: {
+    color: '#FAA61A',
+    fontWeight: '700',
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: 'rgba(114, 137, 218, 0.2)',
+    marginHorizontal: 16,
+    marginTop: 8,
+  }
 });
 
 export default SideDrawer;

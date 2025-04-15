@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Image, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { 
+  View, StyleSheet, Image, TouchableOpacity, Alert, ScrollView, 
+  ActivityIndicator, Linking 
+} from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector } from 'react-redux';
-import { userService } from '../services/user.service';
+import { friendService } from '../services/friend.service';
 
 const UserProfileScreen = ({ route, navigation }) => {
     const { userId } = route.params;
     const currentUser = useSelector(state => state.user);
     const [userProfile, setUserProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [requestStatus, setRequestStatus] = useState('none'); // none, pending, friends
 
     useEffect(() => {
@@ -18,99 +22,224 @@ const UserProfileScreen = ({ route, navigation }) => {
 
     const loadUserProfile = async () => {
         try {
-            const profile = await userService.getUserProfile(userId);
+            setLoading(true);
+            
+            // Validate both user IDs before proceeding
+            if (!userId || !currentUser?._id) {
+                throw new Error('Missing user information. Please try again.');
+            }
+            
+            console.log('Fetching user profile for userId:', userId, 'Current user:', currentUser._id);
+            
+            // Use currentUser._id as the requesting user and userId as the target user
+            const profile = await friendService.getUserProfile(currentUser._id, userId);
+            console.log('Profile received:', profile);
+            
+            if (!profile || !profile._id) {
+                throw new Error('Invalid profile data received');
+            }
+            
             setUserProfile(profile);
-            // Check friendship status
-            const status = await userService.checkFriendshipStatus(currentUser._id, userId);
-            setRequestStatus(status);
+            setRequestStatus(profile.friendshipStatus || 'none');
         } catch (error) {
-            Alert.alert('Error', 'Failed to load user profile');
+            console.error('Failed to load user profile:', error);
+            Alert.alert(
+                'Error', 
+                'Could not load user profile. The user might not exist or the connection failed.',
+                [
+                    { text: 'OK', onPress: () => navigation.goBack() }
+                ]
+            );
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleAddFriend = async () => {
         try {
-            await userService.sendFriendRequest(currentUser._id, userId);
-            setRequestStatus('pending');
+            // Validate both user IDs before proceeding
+            if (!userId || !currentUser?._id) {
+                throw new Error('Missing user information. Please try again.');
+            }
+            
+            await friendService.sendFriendRequest(currentUser._id, userId);
+            setRequestStatus('pending_outgoing');
             Alert.alert('Success', 'Friend request sent successfully');
         } catch (error) {
-            Alert.alert('Error', 'Failed to send friend request');
+            console.error('Failed to send friend request:', error);
+            Alert.alert('Error', error.message || 'Failed to send friend request');
         }
     };
 
-    if (!userProfile) return null;
+    const handleRespondToRequest = async (action) => {
+        try {
+            await friendService.respondToFriendRequest(currentUser._id, userId, action);
+            if (action === 'accept') {
+                setRequestStatus('friends');
+                Alert.alert('Success', `You are now friends with ${userProfile.fullName}`);
+            } else {
+                setRequestStatus('none');
+            }
+        } catch (error) {
+            Alert.alert('Error', `Failed to ${action} friend request`);
+        }
+    };
+
+    const handleRemoveFriend = async () => {
+        Alert.alert(
+            'Remove Friend',
+            `Are you sure you want to remove ${userProfile.fullName} from your friends?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { 
+                    text: 'Remove', 
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await friendService.removeFriend(currentUser._id, userId);
+                            setRequestStatus('none');
+                            Alert.alert('Success', 'Friend removed successfully');
+                        } catch (error) {
+                            Alert.alert('Error', 'Failed to remove friend');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleStartChat = () => {
+        navigation.navigate('ChatScreen', {
+            userId: userProfile._id,
+            userName: userProfile.fullName,
+            userAvatar: userProfile.profilePic
+        });
+    };
+
+    const handleShareProfile = async () => {
+        try {
+            await Share.share({
+                message: `Chat with me on LumeChat! Username: @${userProfile.username}`,
+                title: 'Connect on LumeChat'
+            });
+        } catch (error) {
+            console.error('Error sharing profile:', error);
+        }
+    };
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#128C7E" />
+                <Text style={styles.loadingText}>Loading profile...</Text>
+            </View>
+        );
+    }
+
+    if (!userProfile) {
+        return (
+            <View style={styles.errorContainer}>
+                <MaterialIcons name="error-outline" size={48} color="#F04747" />
+                <Text style={styles.errorText}>Couldn't load user profile</Text>
+                <TouchableOpacity
+                    style={styles.retryButton}
+                    onPress={loadUserProfile}
+                >
+                    <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
-            <LinearGradient
-                colors={['#7289DA', '#4752C4']}
-                style={styles.header}
-            >
-                <View style={styles.profileSection}>
-                    <Image 
-                        source={userProfile.profilePic ? 
-                            { uri: userProfile.profilePic } : 
-                            require('../assets/default-avatar.png')
-                        }
-                        style={styles.profileImage}
-                    />
+            {/* Large profile picture header */}
+            <View style={styles.profileHeader}>
+                <Image 
+                    source={userProfile.profilePic ? 
+                        { uri: userProfile.profilePic } : 
+                        require('../assets/default-avatar.png')
+                    }
+                    style={styles.profileImage}
+                />
+                
+                <View style={styles.nameContainer}>
                     <Text style={styles.userName}>{userProfile.fullName}</Text>
-                    <Text style={styles.userTag}>@{userProfile.username}</Text>
-                    <Text style={styles.userStatus}>{userProfile.status}</Text>
+                    <Text style={styles.userStatus}>{userProfile.status || "Available"}</Text>
                 </View>
+            </View>
 
-                {requestStatus === 'none' && (
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={handleAddFriend}
-                    >
-                        <LinearGradient
-                            colors={['#43B581', '#3CA374']}
-                            style={styles.buttonGradient}
-                        >
-                            <MaterialIcons name="person-add" size={24} color="#FFFFFF" />
-                            <Text style={styles.buttonText}>Add Friend</Text>
-                        </LinearGradient>
+            {/* Action buttons */}
+            {requestStatus === 'friends' ? (
+                <View style={styles.actionContainer}>
+                    <TouchableOpacity style={styles.actionButton} onPress={handleStartChat}>
+                        <MaterialIcons name="message" size={24} color="white" />
+                        <Text style={styles.actionText}>Message</Text>
                     </TouchableOpacity>
-                )}
-
-                {requestStatus === 'pending' && (
-                    <View style={styles.pendingButton}>
-                        <MaterialIcons name="hourglass-bottom" size={24} color="#FAA61A" />
-                        <Text style={styles.pendingText}>Request Pending</Text>
-                    </View>
-                )}
-
-                {requestStatus === 'friends' && (
-                    <View style={styles.friendsSection}>
-                        <MaterialIcons name="check-circle" size={24} color="#43B581" />
-                        <Text style={styles.friendsText}>Friends</Text>
-                    </View>
-                )}
-            </LinearGradient>
-
-            <ScrollView style={styles.content}>
-                <View style={styles.statsContainer}>
-                    {[
-                        { icon: 'chat', label: 'Messages', value: userProfile.messageCount || '0' },
-                        { icon: 'group', label: 'Friends', value: userProfile.friendCount || '0' },
-                        { icon: 'event', label: 'Joined', value: new Date(userProfile.createdAt).toLocaleDateString() }
-                    ].map((stat, index) => (
-                        <View key={index} style={styles.statItem}>
-                            <MaterialIcons name={stat.icon} size={24} color="#7289DA" />
-                            <Text style={styles.statValue}>{stat.value}</Text>
-                            <Text style={styles.statLabel}>{stat.label}</Text>
-                        </View>
-                    ))}
+                    
+                    <TouchableOpacity style={styles.actionButton} onPress={handleRemoveFriend}>
+                        <MaterialIcons name="person-remove" size={24} color="white" />
+                        <Text style={styles.actionText}>Remove</Text>
+                    </TouchableOpacity>
                 </View>
+            ) : requestStatus === 'pending_outgoing' ? (
+                <View style={styles.pendingContainer}>
+                    <MaterialIcons name="hourglass-empty" size={20} color="#888" />
+                    <Text style={styles.pendingText}>Friend request sent</Text>
+                </View>
+            ) : requestStatus === 'pending_incoming' ? (
+                <View style={styles.actionContainer}>
+                    <TouchableOpacity 
+                        style={[styles.actionButton, styles.acceptButton]}
+                        onPress={() => handleRespondToRequest('accept')}
+                    >
+                        <MaterialIcons name="check" size={24} color="white" />
+                        <Text style={styles.actionText}>Accept</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                        style={[styles.actionButton, styles.rejectButton]} 
+                        onPress={() => handleRespondToRequest('reject')}
+                    >
+                        <MaterialIcons name="close" size={24} color="white" />
+                        <Text style={styles.actionText}>Decline</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <TouchableOpacity
+                    style={styles.addFriendButton}
+                    onPress={handleAddFriend}
+                >
+                    <MaterialIcons name="person-add" size={20} color="white" />
+                    <Text style={styles.buttonText}>Add Friend</Text>
+                </TouchableOpacity>
+            )}
 
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>About</Text>
-                    <View style={styles.aboutCard}>
-                        <Text style={styles.aboutText}>
-                            {userProfile.bio || 'No bio available'}
-                        </Text>
-                    </View>
+            {/* User info list */}
+            <ScrollView style={styles.infoContainer}>
+                <View style={styles.infoSection}>
+                    {userProfile.username && (
+                        <View style={styles.infoItem}>
+                            <MaterialIcons name="alternate-email" size={24} color="#128C7E" />
+                            <Text style={styles.infoText}>@{userProfile.username}</Text>
+                        </View>
+                    )}
+                    
+                    {userProfile.bio && (
+                        <View style={styles.bioContainer}>
+                            <Text style={styles.aboutTitle}>About</Text>
+                            <Text style={styles.bioText}>{userProfile.bio}</Text>
+                        </View>
+                    )}
+                    
+                    {userProfile.createdAt && (
+                        <View style={styles.infoItem}>
+                            <MaterialIcons name="event" size={24} color="#128C7E" />
+                            <Text style={styles.infoText}>
+                                Joined {new Date(userProfile.createdAt).toLocaleDateString()}
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
         </View>
@@ -120,128 +249,158 @@ const UserProfileScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#36393F',
+        backgroundColor: '#FFFFFF',
     },
-    header: {
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+    },
+    loadingText: {
+        color: '#128C7E',
+        marginTop: 16,
+        fontSize: 16,
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
         padding: 20,
-        paddingTop: 40,
-        alignItems: 'center',
     },
-    profileSection: {
+    errorText: {
+        fontSize: 18,
+        marginTop: 16,
+        textAlign: 'center',
+        color: '#333',
+    },
+    retryButton: {
+        marginTop: 20,
+        padding: 10,
+        backgroundColor: '#128C7E',
+        borderRadius: 8,
+    },
+    retryText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+    },
+    profileHeader: {
         alignItems: 'center',
+        padding: 20,
+        backgroundColor: '#128C7E',
+        paddingTop: 40,
     },
     profileImage: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        borderWidth: 4,
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        borderWidth: 3,
         borderColor: '#FFFFFF',
     },
-    userName: {
-        fontSize: 24,
-        color: '#FFFFFF',
-        fontWeight: 'bold',
+    nameContainer: {
+        alignItems: 'center',
         marginTop: 12,
     },
-    userTag: {
-        fontSize: 16,
+    userName: {
+        fontSize: 22,
+        fontWeight: 'bold',
         color: '#FFFFFF',
-        opacity: 0.8,
     },
     userStatus: {
         fontSize: 14,
-        color: '#FFFFFF',
-        opacity: 0.6,
+        color: 'rgba(255, 255, 255, 0.8)',
         marginTop: 4,
     },
-    addButton: {
-        marginTop: 16,
-        borderRadius: 20,
-        overflow: 'hidden',
-    },
-    buttonGradient: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-    },
-    buttonText: {
-        color: '#FFFFFF',
-        marginLeft: 8,
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    pendingButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(250, 166, 26, 0.1)',
-        padding: 8,
-        borderRadius: 20,
-        marginTop: 16,
-    },
-    pendingText: {
-        color: '#FAA61A',
-        marginLeft: 8,
-        fontSize: 16,
-    },
-    friendsSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(67, 181, 129, 0.1)',
-        padding: 8,
-        borderRadius: 20,
-        marginTop: 16,
-    },
-    friendsText: {
-        color: '#43B581',
-        marginLeft: 8,
-        fontSize: 16,
-    },
-    content: {
-        flex: 1,
-        padding: 16,
-    },
-    statsContainer: {
+    actionContainer: {
         flexDirection: 'row',
         justifyContent: 'space-around',
-        backgroundColor: '#2F3136',
-        borderRadius: 12,
-        padding: 16,
-        marginTop: -30,
-        elevation: 4,
+        paddingVertical: 16,
+        backgroundColor: '#F5F5F5',
     },
-    statItem: {
+    actionButton: {
         alignItems: 'center',
+        padding: 10,
+        backgroundColor: '#128C7E',
+        borderRadius: 50,
+        width: 80,
+        height: 80,
+        justifyContent: 'center',
     },
-    statValue: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: 'bold',
+    acceptButton: {
+        backgroundColor: '#25D366',
+    },
+    rejectButton: {
+        backgroundColor: '#F44336',
+    },
+    actionText: {
+        color: 'white',
+        fontSize: 12,
         marginTop: 4,
     },
-    statLabel: {
-        color: '#8E9297',
-        fontSize: 12,
+    addFriendButton: {
+        flexDirection: 'row',
+        backgroundColor: '#128C7E',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        alignSelf: 'center',
+        marginVertical: 16,
     },
-    section: {
-        marginTop: 24,
+    buttonText: {
+        color: 'white',
+        fontSize: 16,
+        fontWeight: '600',
+        marginLeft: 8,
     },
-    sectionTitle: {
-        fontSize: 18,
-        color: '#7289DA',
-        fontWeight: 'bold',
-        marginBottom: 12,
+    pendingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F5F5F5',
+        paddingVertical: 16,
     },
-    aboutCard: {
-        backgroundColor: '#2F3136',
-        borderRadius: 12,
+    pendingText: {
+        color: '#888',
+        fontSize: 16,
+        marginLeft: 8,
+    },
+    infoContainer: {
+        flex: 1,
+    },
+    infoSection: {
         padding: 16,
     },
-    aboutText: {
-        color: '#FFFFFF',
+    infoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEEEEE',
+    },
+    infoText: {
+        color: '#333',
+        fontSize: 16,
+        marginLeft: 16,
+    },
+    bioContainer: {
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEEEEE',
+    },
+    aboutTitle: {
+        color: '#128C7E',
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    bioText: {
+        color: '#333',
         fontSize: 16,
         lineHeight: 24,
-    },
+    }
 });
 
 export default UserProfileScreen;
