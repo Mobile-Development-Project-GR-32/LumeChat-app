@@ -116,21 +116,82 @@ const UserProfileScreen = ({ route, navigation }) => {
         });
     };
 
-    const handleShareProfile = async () => {
-        try {
-            await Share.share({
-                message: `Chat with me on LumeChat! Username: @${userProfile.username}`,
-                title: 'Connect on LumeChat'
-            });
-        } catch (error) {
-            console.error('Error sharing profile:', error);
+    const handleCall = () => {
+        Alert.alert('Call Feature', 'Voice call feature coming soon!');
+    };
+
+    const handleVideoCall = () => {
+        Alert.alert('Video Call Feature', 'Video call feature coming soon!');
+    };
+
+    const handleToggleNotifications = () => {
+        Alert.alert('Notifications', 'Notification settings updated');
+    };
+
+    const handleMediaSearch = () => {
+        Alert.alert('Search', 'Media search feature coming soon!');
+    };
+
+    // Update the UI based on friendship status
+    const renderFriendshipButtons = () => {
+        if (requestStatus === 'friends') {
+            return (
+                <>
+                    <TouchableOpacity style={styles.messageButton} onPress={handleStartChat}>
+                        <MaterialIcons name="message" size={24} color="white" />
+                        <Text style={styles.buttonText}>Message</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={styles.removeButton} onPress={handleRemoveFriend}>
+                        <MaterialIcons name="person-remove" size={24} color="white" />
+                        <Text style={styles.buttonText}>Unfriend</Text>
+                    </TouchableOpacity>
+                </>
+            );
+        } else if (requestStatus === 'pending_outgoing') {
+            return (
+                <View style={styles.pendingContainer}>
+                    <MaterialIcons name="hourglass-empty" size={20} color="#8e9297" />
+                    <Text style={styles.pendingText}>Friend request sent</Text>
+                </View>
+            );
+        } else if (requestStatus === 'pending_incoming') {
+            return (
+                <View style={styles.requestButtonsContainer}>
+                    <TouchableOpacity 
+                        style={[styles.requestButton, styles.acceptButton]}
+                        onPress={() => handleRespondToRequest('accept')}
+                    >
+                        <MaterialIcons name="check" size={24} color="white" />
+                        <Text style={styles.buttonText}>Accept</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                        style={[styles.requestButton, styles.rejectButton]} 
+                        onPress={() => handleRespondToRequest('reject')}
+                    >
+                        <MaterialIcons name="close" size={24} color="white" />
+                        <Text style={styles.buttonText}>Decline</Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        } else {
+            return (
+                <TouchableOpacity
+                    style={styles.addFriendButton}
+                    onPress={handleAddFriend}
+                >
+                    <MaterialIcons name="person-add" size={24} color="white" />
+                    <Text style={styles.buttonText}>Add Friend</Text>
+                </TouchableOpacity>
+            );
         }
     };
 
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#128C7E" />
+                <ActivityIndicator size="large" color="#7289DA" />
                 <Text style={styles.loadingText}>Loading profile...</Text>
             </View>
         );
@@ -153,75 +214,76 @@ const UserProfileScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            {/* Large profile picture header */}
+            {/* Profile Header */}
             <View style={styles.profileHeader}>
-                <Image 
-                    source={userProfile.profilePic ? 
-                        { uri: userProfile.profilePic } : 
-                        require('../assets/default-avatar.png')
-                    }
-                    style={styles.profileImage}
-                />
-                
-                <View style={styles.nameContainer}>
-                    <Text style={styles.userName}>{userProfile.fullName}</Text>
-                    <Text style={styles.userStatus}>{userProfile.status || "Available"}</Text>
+                <View style={styles.profileImageSection}>
+                    <Image 
+                        source={userProfile.profilePic ? 
+                            { uri: userProfile.profilePic } : 
+                            require('../assets/default-avatar.png')
+                        }
+                        style={styles.profileImage}
+                    />
+                    <View style={styles.userInfoContainer}>
+                        <Text style={styles.userName}>{userProfile.fullName}</Text>
+                        <Text style={styles.userStatus}>{userProfile.status || "Available"}</Text>
+                    </View>
                 </View>
             </View>
-
-            {/* Action buttons */}
-            {requestStatus === 'friends' ? (
-                <View style={styles.actionContainer}>
-                    <TouchableOpacity style={styles.actionButton} onPress={handleStartChat}>
-                        <MaterialIcons name="message" size={24} color="white" />
-                        <Text style={styles.actionText}>Message</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity style={styles.actionButton} onPress={handleRemoveFriend}>
-                        <MaterialIcons name="person-remove" size={24} color="white" />
-                        <Text style={styles.actionText}>Remove</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : requestStatus === 'pending_outgoing' ? (
-                <View style={styles.pendingContainer}>
-                    <MaterialIcons name="hourglass-empty" size={20} color="#888" />
-                    <Text style={styles.pendingText}>Friend request sent</Text>
-                </View>
-            ) : requestStatus === 'pending_incoming' ? (
-                <View style={styles.actionContainer}>
-                    <TouchableOpacity 
-                        style={[styles.actionButton, styles.acceptButton]}
-                        onPress={() => handleRespondToRequest('accept')}
-                    >
-                        <MaterialIcons name="check" size={24} color="white" />
-                        <Text style={styles.actionText}>Accept</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                        style={[styles.actionButton, styles.rejectButton]} 
-                        onPress={() => handleRespondToRequest('reject')}
-                    >
-                        <MaterialIcons name="close" size={24} color="white" />
-                        <Text style={styles.actionText}>Decline</Text>
-                    </TouchableOpacity>
-                </View>
-            ) : (
-                <TouchableOpacity
-                    style={styles.addFriendButton}
-                    onPress={handleAddFriend}
-                >
-                    <MaterialIcons name="person-add" size={20} color="white" />
-                    <Text style={styles.buttonText}>Add Friend</Text>
+            
+            {/* Action Buttons */}
+            <View style={styles.actionButtonsContainer}>
+                <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
+                    <MaterialIcons name="call" size={24} color="#7289DA" />
+                    <Text style={styles.actionLabel}>Call</Text>
                 </TouchableOpacity>
-            )}
+                
+                <TouchableOpacity style={styles.actionButton} onPress={handleVideoCall}>
+                    <MaterialIcons name="videocam" size={24} color="#7289DA" />
+                    <Text style={styles.actionLabel}>Video</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.actionButton} onPress={handleToggleNotifications}>
+                    <MaterialIcons name="notifications" size={24} color="#7289DA" />
+                    <Text style={styles.actionLabel}>Mute</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity style={styles.actionButton} onPress={handleMediaSearch}>
+                    <MaterialIcons name="search" size={24} color="#7289DA" />
+                    <Text style={styles.actionLabel}>Search</Text>
+                </TouchableOpacity>
+            </View>
 
             {/* User info list */}
             <ScrollView style={styles.infoContainer}>
                 <View style={styles.infoSection}>
                     {userProfile.username && (
                         <View style={styles.infoItem}>
-                            <MaterialIcons name="alternate-email" size={24} color="#128C7E" />
-                            <Text style={styles.infoText}>@{userProfile.username}</Text>
+                            <MaterialIcons name="alternate-email" size={24} color="#7289DA" />
+                            <View style={styles.infoTextContainer}>
+                                <Text style={styles.infoLabel}>Username</Text>
+                                <Text style={styles.infoText}>@{userProfile.username}</Text>
+                            </View>
+                        </View>
+                    )}
+                    
+                    {userProfile.phoneNumber && (
+                        <View style={styles.infoItem}>
+                            <MaterialIcons name="phone" size={24} color="#7289DA" />
+                            <View style={styles.infoTextContainer}>
+                                <Text style={styles.infoLabel}>Phone</Text>
+                                <Text style={styles.infoText}>{userProfile.phoneNumber}</Text>
+                            </View>
+                        </View>
+                    )}
+                    
+                    {userProfile.email && (
+                        <View style={styles.infoItem}>
+                            <MaterialIcons name="email" size={24} color="#7289DA" />
+                            <View style={styles.infoTextContainer}>
+                                <Text style={styles.infoLabel}>Email</Text>
+                                <Text style={styles.infoText}>{userProfile.email}</Text>
+                            </View>
                         </View>
                     )}
                     
@@ -234,12 +296,20 @@ const UserProfileScreen = ({ route, navigation }) => {
                     
                     {userProfile.createdAt && (
                         <View style={styles.infoItem}>
-                            <MaterialIcons name="event" size={24} color="#128C7E" />
-                            <Text style={styles.infoText}>
-                                Joined {new Date(userProfile.createdAt).toLocaleDateString()}
-                            </Text>
+                            <MaterialIcons name="event" size={24} color="#7289DA" />
+                            <View style={styles.infoTextContainer}>
+                                <Text style={styles.infoLabel}>Joined</Text>
+                                <Text style={styles.infoText}>
+                                    {new Date(userProfile.createdAt).toLocaleDateString()}
+                                </Text>
+                            </View>
                         </View>
                     )}
+                </View>
+                
+                {/* Friendship action buttons */}
+                <View style={styles.friendActionContainer}>
+                    {renderFriendshipButtons()}
                 </View>
             </ScrollView>
         </View>
@@ -249,16 +319,16 @@ const UserProfileScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#36393F',
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#36393F',
     },
     loadingText: {
-        color: '#128C7E',
+        color: '#7289DA',
         marginTop: 16,
         fontSize: 16,
     },
@@ -266,19 +336,19 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#36393F',
         padding: 20,
     },
     errorText: {
         fontSize: 18,
         marginTop: 16,
         textAlign: 'center',
-        color: '#333',
+        color: '#DCDDDE',
     },
     retryButton: {
         marginTop: 20,
         padding: 10,
-        backgroundColor: '#128C7E',
+        backgroundColor: '#7289DA',
         borderRadius: 8,
     },
     retryText: {
@@ -286,21 +356,25 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     profileHeader: {
-        alignItems: 'center',
+        backgroundColor: '#7289DA',
         padding: 20,
-        backgroundColor: '#128C7E',
-        paddingTop: 40,
+        paddingTop: 60,
+        paddingBottom: 30,
+    },
+    profileImageSection: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     profileImage: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
         borderWidth: 3,
         borderColor: '#FFFFFF',
     },
-    nameContainer: {
-        alignItems: 'center',
-        marginTop: 12,
+    userInfoContainer: {
+        flex: 1,
+        marginLeft: 20,
     },
     userName: {
         fontSize: 22,
@@ -312,45 +386,97 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.8)',
         marginTop: 4,
     },
-    actionContainer: {
+    actionButtonsContainer: {
         flexDirection: 'row',
         justifyContent: 'space-around',
+        backgroundColor: '#2F3136',
         paddingVertical: 16,
-        backgroundColor: '#F5F5F5',
+        borderBottomWidth: 1,
+        borderBottomColor: '#202225',
     },
     actionButton: {
         alignItems: 'center',
-        padding: 10,
-        backgroundColor: '#128C7E',
-        borderRadius: 50,
-        width: 80,
-        height: 80,
-        justifyContent: 'center',
+        width: 70,
     },
-    acceptButton: {
-        backgroundColor: '#25D366',
-    },
-    rejectButton: {
-        backgroundColor: '#F44336',
-    },
-    actionText: {
-        color: 'white',
-        fontSize: 12,
+    actionLabel: {
         marginTop: 4,
+        color: '#DCDDDE',
+        fontSize: 12,
+    },
+    infoContainer: {
+        flex: 1,
+    },
+    infoSection: {
+        padding: 16,
+        backgroundColor: '#36393F',
+    },
+    infoItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#2F3136',
+    },
+    infoTextContainer: {
+        flex: 1,
+        marginLeft: 16,
+    },
+    infoLabel: {
+        color: '#8e9297',
+        fontSize: 14,
+    },
+    infoText: {
+        color: '#DCDDDE',
+        fontSize: 16,
+        marginTop: 2,
+    },
+    bioContainer: {
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#2F3136',
+    },
+    aboutTitle: {
+        color: '#7289DA',
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    bioText: {
+        color: '#DCDDDE',
+        fontSize: 16,
+        lineHeight: 24,
+    },
+    friendActionContainer: {
+        padding: 16,
+        backgroundColor: '#2F3136',
+    },
+    messageButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#7289DA',
+        padding: 16,
+        borderRadius: 8,
+        marginBottom: 12,
+    },
+    removeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F04747',
+        padding: 16,
+        borderRadius: 8,
     },
     addFriendButton: {
         flexDirection: 'row',
-        backgroundColor: '#128C7E',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
-        alignSelf: 'center',
-        marginVertical: 16,
+        backgroundColor: '#7289DA',
+        padding: 16,
+        borderRadius: 8,
     },
     buttonText: {
-        color: 'white',
+        color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '600',
         marginLeft: 8,
@@ -359,47 +485,34 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F5F5F5',
+        backgroundColor: '#36393F',
         paddingVertical: 16,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#202225',
     },
     pendingText: {
-        color: '#888',
+        color: '#DCDDDE',
         fontSize: 16,
         marginLeft: 8,
     },
-    infoContainer: {
-        flex: 1,
+    requestButtonsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
     },
-    infoSection: {
-        padding: 16,
-    },
-    infoItem: {
+    requestButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#EEEEEE',
+        justifyContent: 'center',
+        padding: 16,
+        borderRadius: 8,
+        flex: 0.48,
     },
-    infoText: {
-        color: '#333',
-        fontSize: 16,
-        marginLeft: 16,
+    acceptButton: {
+        backgroundColor: '#43B581',
     },
-    bioContainer: {
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#EEEEEE',
-    },
-    aboutTitle: {
-        color: '#128C7E',
-        fontSize: 14,
-        fontWeight: '600',
-        marginBottom: 8,
-    },
-    bioText: {
-        color: '#333',
-        fontSize: 16,
-        lineHeight: 24,
+    rejectButton: {
+        backgroundColor: '#F04747',
     }
 });
 
