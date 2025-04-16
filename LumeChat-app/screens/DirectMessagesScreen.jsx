@@ -134,7 +134,7 @@ const DirectMessagesScreen = ({route, navigation}) => {
                         <View style={styles.inputWrapper}>
                             <TextInput
                                 className="flex-1 text-base text-white font-normal ml-2"
-                                placeholder={"send a message to #"+channel.name}
+                                placeholder={"send a message to #"+userName}
                                 value={message}
                                 onChangeText={message => setMessage(message)}
                                 submitBehavior='submit'
