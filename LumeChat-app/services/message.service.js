@@ -35,7 +35,7 @@ export const messageService = {
         try {
             console.log('Posting direct message data:', messageData)
 
-            const response = await fetch(`${API_URL}/messages/post-direct-message`, {
+            const response = await fetch(`${API_URL}/messages/direct-messages/post`, {
                 method: 'POST',
                 headers: messageService.getHeaders(userId),
                 body: JSON.stringify(messageData)
