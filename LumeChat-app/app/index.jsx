@@ -11,7 +11,8 @@ import LoginScreen from "../screens/LoginScreen";
 import SignUpScreen from "../screens/SignUpScreen";
 import HomeScreen from "../screens/HomeScreen";
 import SplashScreen from "../screens/SplashScreen";
-import ChatScreen from '../screens/ChatScreen';
+import ChannelChatScreen from '../screens/ChannelChatScreen';
+import DirectMessagesScreen from '../screens/DirectMessagesScreen'
 import CreateChannelScreen from "../screens/CreateChannelScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import SettingsScreen from "../screens/settings/SettingsScreen";
@@ -63,7 +64,8 @@ const AppContent = () => {
           headerTintColor: '#fff',
         }}
       />
-      <Stack.Screen name="ChatScreen" component={ChatScreen}/>
+      <Stack.Screen name="ChannelChat" component={ChannelChatScreen}/>
+      <Stack.Screen name="DirectMessages" component={DirectMessagesScreen}/>
       <Stack.Screen 
         name="Profile" 
         component={ProfileScreen}

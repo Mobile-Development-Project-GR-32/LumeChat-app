@@ -238,7 +238,7 @@ const SideDrawer = ({ isOpen, drawerWidth }) => {
 
   const handleContactPress = (contact) => {
     // Navigate to direct message with this contact
-    navigation.navigate('ChatScreen', { 
+    navigation.navigate('DirectMessages', { 
       userId: contact._id,
       userName: contact.fullName,
       userAvatar: contact.profilePic

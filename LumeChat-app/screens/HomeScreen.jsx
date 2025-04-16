@@ -11,7 +11,7 @@ import { userStatusManager } from '../utils/userStatusManager';
 
 const ChannelItem = ({ channel, navigation }) => (
   <TouchableOpacity 
-    onPress={() => navigation.navigate('ChatScreen', {channel: channel})}
+    onPress={() => navigation.navigate('ChannelChat', {channel: channel})}
     style={[styles.channelItem, channel.isActive && styles.activeChannel]}
   >
     <View style={styles.channelIconContainer}>
