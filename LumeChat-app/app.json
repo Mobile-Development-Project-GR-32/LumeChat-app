@@ -37,6 +37,18 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow LumeChat to access your camera to scan QR codes and take photos."
+        }
+      ],
+      [
+        "expo-barcode-scanner",
+        {
+          "cameraPermission": "Allow LumeChat to access your camera to scan QR codes."
+        }
       ]
     ],
     "experiments": {

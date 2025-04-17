@@ -6,6 +6,8 @@ import { useSelector } from 'react-redux';
 import { friendService } from '../services/friend.service';
 import { useNavigation } from '@react-navigation/native';
 import { userStatusManager } from '../utils/userStatusManager';
+// Import Camera and BarCodeScanner
+import { Camera } from 'expo-camera';
 
 const ContactItem = ({ contact, onPress, onAccept, onReject, onRemove, isPending = false }) => {
   const getInitials = (name) => {
@@ -110,6 +112,9 @@ const SideDrawer = ({ isOpen, drawerWidth }) => {
   const [newContactId, setNewContactId] = useState('');
   const [onlineStatuses, setOnlineStatuses] = useState({});
   const slideAnim = React.useRef(new Animated.Value(-drawerWidth)).current;
+  const [hasCameraPermission, setHasCameraPermission] = useState(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanned, setScanned] = useState(false);
 
   const fetchData = async () => {
     if (!user?._id) return;
@@ -340,6 +345,16 @@ const SideDrawer = ({ isOpen, drawerWidth }) => {
     );
   };
 
+  const handleScanQR = async () => {
+    try {
+      // Navigate directly to the QR scanner screen
+      navigation.navigate('QRScanner');
+    } catch (error) {
+      console.error('Error navigating to QR scanner:', error);
+      Alert.alert('Error', 'Failed to open QR scanner');
+    }
+  };
+
   const renderContactList = () => {
     return (
       <>
@@ -404,17 +419,30 @@ const SideDrawer = ({ isOpen, drawerWidth }) => {
         style={styles.header}
       >
         <Text style={styles.headerText}>Direct Messages</Text>
-        <TouchableOpacity style={styles.addButton} onPress={showAddContactModal}>
+        <TouchableOpacity style={styles.addButton} onPress={handleScanQR}>
           <LinearGradient
             colors={['#7289DA', '#5865F2']}
             style={styles.addButtonGradient}
           >
-            <MaterialIcons name="person-add" size={20} color="#FFFFFF" />
+            <MaterialIcons name="qr-code-scanner" size={20} color="#FFFFFF" />
           </LinearGradient>
         </TouchableOpacity>
       </LinearGradient>
 
-      {isLoading ? (
+      {isScanning ? (
+        <View style={styles.scannerContainer}>
+          <View style={styles.permissionContainer}>
+            <MaterialIcons name="qr-code-scanner" size={48} color="#7289DA" />
+            <Text style={styles.permissionText}>QR Scanner coming soon</Text>
+            <TouchableOpacity 
+              style={styles.permissionButton}
+              onPress={() => setIsScanning(false)}
+            >
+              <Text style={styles.permissionButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : isLoading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#7289DA" />
           <Text style={styles.loaderText}>Loading contacts...</Text>
@@ -443,6 +471,21 @@ const SideDrawer = ({ isOpen, drawerWidth }) => {
             </View>
           )}
         </ScrollView>
+      )}
+
+      {/* Show add contact button at bottom */}
+      {!isScanning && !isLoading && (
+        <TouchableOpacity 
+          style={styles.floatingAddButton}
+          onPress={showAddContactModal}
+        >
+          <LinearGradient
+            colors={['#7289DA', '#5865F2']}
+            style={styles.floatingButtonGradient}
+          >
+            <MaterialIcons name="person-add" size={24} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
       )}
     </Animated.View>
   );
@@ -627,7 +670,130 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(114, 137, 218, 0.2)',
     marginHorizontal: 16,
     marginTop: 8,
-  }
+  },
+  scanPlaceholder: {
+    flex: 1,
+    backgroundColor: '#36393F',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  scanText: {
+    color: '#FFFFFF',
+    marginTop: 20,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  cancelScanButton: {
+    position: 'absolute',
+    bottom: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 24,
+  },
+  cancelScanText: {
+    color: '#FFFFFF',
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  permissionText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  permissionButton: {
+    marginTop: 20,
+    backgroundColor: '#7289DA',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  permissionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  floatingAddButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    borderRadius: 28,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  floatingButtonGradient: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scannerContainer: {
+    flex: 1,
+    position: 'relative',
+    backgroundColor: '#000',
+  },
+  scanOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanFrame: {
+    width: 250,
+    height: 250,
+    borderRadius: 12,
+    position: 'relative',
+  },
+  cornerIndicator: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderColor: '#7289DA',
+    borderWidth: 5,
+  },
+  topLeftCorner: {
+    top: 0,
+    left: 0,
+    borderBottomWidth: 0,
+    borderRightWidth: 0,
+    borderTopLeftRadius: 12,
+  },
+  topRightCorner: {
+    top: 0,
+    right: 0,
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+    borderTopRightRadius: 12,
+  },
+  bottomLeftCorner: {
+    bottom: 0,
+    left: 0,
+    borderTopWidth: 0,
+    borderRightWidth: 0,
+    borderBottomLeftRadius: 12,
+  },
+  bottomRightCorner: {
+    bottom: 0,
+    right: 0,
+    borderTopWidth: 0,
+    borderLeftWidth: 0,
+    borderBottomRightRadius: 12,
+  },
 });
 
 export default SideDrawer;

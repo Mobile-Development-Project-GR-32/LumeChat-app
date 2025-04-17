@@ -208,6 +208,50 @@ export const friendService = {
         }
     },
 
+    // Add this new function to check friendship status
+    checkFriendshipStatus: async (userId, targetUserId) => {
+        try {
+            const response = await fetch(
+                `${API_URL}/friends/status?targetUserId=${targetUserId}`, 
+                {
+                    headers: friendService.getHeaders(userId)
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to check friendship status');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error checking friendship status:', error);
+            return { status: 'none' }; // Default to not friends if there's an error
+        }
+    },
+
+    // Add this function to check if two users are friends
+    getFriendshipStatus: async (userId, targetUserId) => {
+        try {
+            const response = await fetch(
+                `${API_URL}/friends/status/${targetUserId}`, 
+                {
+                    headers: friendService.getHeaders(userId)
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to check friendship status');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error checking friendship status:', error);
+            return { status: 'none' }; // Default to not friends if there's an error
+        }
+    },
+
     // Subscribe to user status updates using WebSocket
     subscribeToUserStatus: (userId, callback) => {
         try {

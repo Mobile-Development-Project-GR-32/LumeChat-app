@@ -29,18 +29,50 @@ const UserProfileScreen = ({ route, navigation }) => {
                 throw new Error('Missing user information. Please try again.');
             }
             
-            console.log('Fetching user profile for userId:', userId, 'Current user:', currentUser._id);
-            
             // Use currentUser._id as the requesting user and userId as the target user
             const profile = await friendService.getUserProfile(currentUser._id, userId);
-            console.log('Profile received:', profile);
             
             if (!profile || !profile._id) {
                 throw new Error('Invalid profile data received');
             }
             
+            // Make sure we're properly getting the friendship status
             setUserProfile(profile);
-            setRequestStatus(profile.friendshipStatus || 'none');
+            
+            // Force set the requestStatus to 'friends' if we know they are friends
+            // This will fix the case where the API isn't properly setting the status
+            if (profile.friendshipStatus === 'friends' || profile.isFriend === true) {
+                setRequestStatus('friends');
+            } else {
+                // Try to get the friendship status another way if not found in the profile
+                try {
+                    const friendsList = await friendService.getFriends(currentUser._id);
+                    const isFriend = friendsList.some(friend => friend._id === userId);
+                    
+                    if (isFriend) {
+                        setRequestStatus('friends');
+                    } else if (profile.friendshipStatus) {
+                        setRequestStatus(profile.friendshipStatus);
+                    } else {
+                        // If nothing else, check for pending requests
+                        const pendingRequests = await friendService.getFriendRequests(currentUser._id);
+                        const isIncoming = pendingRequests.some(request => request._id === userId);
+                        
+                        if (isIncoming) {
+                            setRequestStatus('pending_incoming');
+                        } else {
+                            // Default to none if we can't determine status
+                            setRequestStatus('none');
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error checking friendship lists:", error);
+                    // Keep whatever status we got from the profile
+                    if (profile.friendshipStatus) {
+                        setRequestStatus(profile.friendshipStatus);
+                    }
+                }
+            }
         } catch (error) {
             console.error('Failed to load user profile:', error);
             Alert.alert(
@@ -87,16 +119,17 @@ const UserProfileScreen = ({ route, navigation }) => {
 
     const handleRemoveFriend = async () => {
         Alert.alert(
-            'Remove Friend',
-            `Are you sure you want to remove ${userProfile.fullName} from your friends?`,
+            'Unfriend',
+            `Are you sure you want to unfriend ${userProfile.fullName}?`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 { 
-                    text: 'Remove', 
+                    text: 'Unfriend', 
                     style: 'destructive',
                     onPress: async () => {
                         try {
                             await friendService.removeFriend(currentUser._id, userId);
+                            // Update local state immediately after successful API call
                             setRequestStatus('none');
                             Alert.alert('Success', 'Friend removed successfully');
                         } catch (error) {
@@ -132,9 +165,15 @@ const UserProfileScreen = ({ route, navigation }) => {
         Alert.alert('Search', 'Media search feature coming soon!');
     };
 
-    // Update the UI based on friendship status
+    // Update the UI based on friendship status - enhance with better logging
     const renderFriendshipButtons = () => {
-        if (requestStatus === 'friends') {
+        console.log("Current friendship status:", requestStatus);
+        console.log("Is user a friend?", userProfile?.isFriend);
+        
+        // Force friendship status if user is a friend but status doesn't reflect it
+        const effectiveStatus = userProfile?.isFriend === true ? 'friends' : requestStatus;
+        
+        if (effectiveStatus === 'friends') {
             return (
                 <>
                     <TouchableOpacity style={styles.messageButton} onPress={handleStartChat}>
@@ -148,14 +187,14 @@ const UserProfileScreen = ({ route, navigation }) => {
                     </TouchableOpacity>
                 </>
             );
-        } else if (requestStatus === 'pending_outgoing') {
+        } else if (effectiveStatus === 'pending_outgoing') {
             return (
                 <View style={styles.pendingContainer}>
                     <MaterialIcons name="hourglass-empty" size={20} color="#8e9297" />
                     <Text style={styles.pendingText}>Friend request sent</Text>
                 </View>
             );
-        } else if (requestStatus === 'pending_incoming') {
+        } else if (effectiveStatus === 'pending_incoming') {
             return (
                 <View style={styles.requestButtonsContainer}>
                     <TouchableOpacity 
