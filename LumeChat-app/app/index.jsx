@@ -21,10 +21,9 @@ import PrivacyScreen from "../screens/settings/PrivacyScreen";
 import SecurityScreen from "../screens/settings/SecurityScreen";
 import ThemeScreen from "../screens/settings/ThemeScreen";
 import QRCodeScreen from "../screens/settings/QRCodeScreen";
-
-// Import chatbot screen
 import ChatbotScreen from "../screens/ChatbotScreen";
-import UserProfileScreen from "../screens/UserProfileScreen";  // Add this import
+import UserProfileScreen from "../screens/UserProfileScreen";
+import QRScannerScreen from "../screens/QRScannerScreen";  // Import the QRScannerScreen
 
 const Stack = createNativeStackNavigator();
 
@@ -164,11 +163,14 @@ const AppContent = () => {
         }}
       />
       <Stack.Screen name="Chatbot" component={ChatbotScreen} />
+      <Stack.Screen name="QRScanner" component={QRScannerScreen} />
     </Stack.Navigator>
   );
 };
 
-const App = () => {
+// Export the AppContent as default
+// Remove the NavigationContainer wrapper since it's already provided by Expo Router
+export default function App() {
   return (
     <Provider store={Store}>
       <PaperProvider>
@@ -176,6 +178,4 @@ const App = () => {
       </PaperProvider>
     </Provider>
   );
-};
-
-export default App;
+}

@@ -24,6 +24,12 @@ export default {
     },
     plugins: [
       "expo-router",
+      // Change configuration for barcode scanner
+      ["expo-barcode-scanner", 
+       {
+         "cameraPermission": "Allow LumeChat to access your camera to scan QR codes."
+       }
+      ],
       [
         "expo-splash-screen",
         {
