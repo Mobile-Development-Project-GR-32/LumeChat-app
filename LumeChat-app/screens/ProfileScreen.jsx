@@ -38,11 +38,37 @@ const ProfileScreen = ({ navigation }) => {
         const loadProfileData = async () => {
             setIsLoading(true);
             try {
-                const data = await friendService.getUserProfile(user._id, user._id);
+                // Log current Redux user state
+                console.log('Current user state in ProfileScreen:', user);
+                
+                // Attempt to get complete profile data
+                const data = await profileService.getProfile(user._id);
+                
+                // Check if the data is a fallback profile
+                if (data.isFallback) {
+                    console.warn('Retrieved fallback profile data:', data);
+                    Alert.alert(
+                        'Profile Unavailable',
+                        'Could not retrieve your complete profile data. Some features may be limited.',
+                        [{ text: 'OK' }]
+                    );
+                } else {
+                    console.log('Retrieved complete profile data:', data);
+                }
+                
                 setProfile(data);
-                dispatch({ type: 'UPDATE_USER', payload: data });
+                
+                // Only update Redux if we got non-fallback data
+                if (!data.isFallback) {
+                    dispatch({ type: 'SET_USER', payload: data });
+                }
             } catch (error) {
                 console.error('Profile load error:', error);
+                Alert.alert(
+                    'Error',
+                    'Failed to load profile data. Please try again later.',
+                    [{ text: 'OK' }]
+                );
             } finally {
                 setIsLoading(false);
             }
@@ -50,8 +76,11 @@ const ProfileScreen = ({ navigation }) => {
 
         // Subscribe to profile updates
         const unsubscribe = profileService.subscribe('profileUpdate', (updatedProfile) => {
-            setProfile(updatedProfile);
-            dispatch({ type: 'UPDATE_USER', payload: updatedProfile });
+            console.log('Profile update received in ProfileScreen:', updatedProfile);
+            if (!updatedProfile.isFallback) {
+                setProfile(updatedProfile);
+                dispatch({ type: 'SET_USER', payload: updatedProfile });
+            }
         });
 
         loadProfileData();
