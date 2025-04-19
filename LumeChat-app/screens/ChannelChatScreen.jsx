@@ -68,6 +68,13 @@ const ChannelChatScreen = ({route, navigation}) => {
         }
     }
 
+    const handleHeaderPress = () => {
+        navigation.navigate('ChannelProfile', {
+            channelId: channel._id || channel.id,
+            channelName: channel.name
+        });
+    };
+
     const renderMessageItem = ({ item }) => (
         <ChatMessage 
           messageData={item}
@@ -84,9 +91,22 @@ const ChannelChatScreen = ({route, navigation}) => {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <MaterialIcons name="arrow-back" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
-                    <View style={styles.headerTitle}>
+                    <TouchableOpacity 
+                        style={styles.headerTitle}
+                        onPress={handleHeaderPress}
+                    >
                         <Text style={styles.headerName}>{channel.name}</Text>
-                    </View>
+                        <View style={styles.headerInfoRow}>
+                            <MaterialIcons name="info-outline" size={14} color="#B9BBBE" />
+                            <Text style={styles.headerInfo}>Tap for channel details</Text>
+                        </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={styles.menuButton}
+                        onPress={() => navigation.navigate('ChannelMenu', { channelId: channel._id || channel.id })}
+                    >
+                        <MaterialIcons name="more-vert" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
                 </View>
                     <FlatList
                         data={messages}
@@ -164,6 +184,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  headerInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  headerInfo: {
+    fontSize: 11,
+    color: '#B9BBBE',
+    marginLeft: 4,
+  },
+  menuButton: {
+    padding: 8,
   },
   statusContainer: {
     flexDirection: 'row',

@@ -3,44 +3,68 @@ import apiConfig from '../config/api.config';
 const API_URL = apiConfig.API_URL;
 
 export const friendService = {
-    getHeaders: (userId) => ({
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'user-id': userId
-    }),
+    getHeaders: (userId) => {
+        if (!userId) {
+            console.error('Missing userId in getHeaders');
+        }
+        return {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'user-id': userId
+        };
+    },
 
-    // Get user profile with friendship status
+    // Get user profile
     getUserProfile: async (userId, targetUserId) => {
         try {
-            console.log(`Fetching profile for targetUserId: ${targetUserId} by userId: ${userId}`);
+            console.log(`Fetching user profile: requestingUserId=${requestingUserId}, targetUserId=${targetUserId}`);
             
-            // Validate both IDs before making the request
-            if (!userId || !targetUserId) {
-                throw new Error(userId ? 'Target user ID is required' : 'User ID is required');
-            }
+            if (!requestingUserId || !targetUserId) {
+                throw new Error('Missing user ID parameters');
+}
             
-            const response = await fetch(`${API_URL}/friends/profile/${targetUserId}`, {
+            // Make sure the endpoint and parameters are correct
+            const url = `${API_URL}/users/${targetUserId}/profile`;
+            console.log('Request URL:', url);
+            
+            const response = await fetch(url, {
                 headers: friendService.getHeaders(userId)
             });
-
-            // Get the response details for debugging
-            const responseData = await response.json();
-            console.log('Profile API response:', responseData);
             
             if (!response.ok) {
-                throw new Error(responseData.error || 'Failed to fetch user profile');
+                // Get the error text for debugging
+                const errorText = await response.text();
+                console.error('Profile fetch error response:', errorText);
+                let errorMessage = `Request failed with status ${response.status}`;
+                
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMessage = errorData.error || errorData.message || errorMessage;
+                } catch (e) {
+                    // If not JSON, use the text directly
+                    errorMessage = errorText || errorMessage;
+                }
+                
+                throw new Error(errorMessage);
             }
 
-            // Return a default structure if the response doesn't have expected fields
-            if (!responseData || !responseData.fullName) {
-                console.warn('API returned incomplete profile data:', responseData);
-                throw new Error('Incomplete profile data received');
-            }
-
-            return responseData;
+            return response.json();
         } catch (error) {
             console.error('User profile fetch error:', error);
-            throw error; // Throw the error instead of returning fallback data
+
+            // Create a fallback user object with minimal information
+            if (targetUserId) {
+                return {
+                    _id: targetUserId,
+                    fullName: 'Unknown User',
+                    username: 'user',
+                    status: 'Status unavailable',
+                    friendshipStatus: 'none',
+                    isFallback: true
+                };
+            }
+            
+            throw error;
         }
     },
 

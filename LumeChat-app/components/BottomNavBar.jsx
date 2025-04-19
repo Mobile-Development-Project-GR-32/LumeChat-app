@@ -19,7 +19,7 @@ const BottomNavBar = ({ activeTab, onTabPress }) => {
   };
 
   const handleChatbotPress = () => {
-    navigation.navigate('Chatbot'); // Navigate directly to ChatbotScreen
+    navigation.navigate('Chatbot');
   };
 
   const handleTabPress = (id) => {
@@ -93,16 +93,24 @@ const BottomNavBar = ({ activeTab, onTabPress }) => {
         </View>
       </LinearGradient>
       
-      {/* WhatsApp-style Meta AI Button */}
+      {/* Redesigned AI Button */}
       <TouchableOpacity
         style={styles.aiButton}
         onPress={handleChatbotPress}
       >
         <LinearGradient
-          colors={['#5865F2', '#7289DA']}
+          colors={['#9747FF', '#6C22E5']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={styles.aiButtonGradient}
         >
-          <MaterialIcons name="smart-toy" size={28} color="#FFFFFF" />
+          <View style={styles.aiButtonInner}>
+            <View style={styles.aiButtonRipple}>
+              <View style={styles.aiButtonCore}>
+                <MaterialIcons name="smart-toy" size={24} color="#FFFFFF" />
+              </View>
+            </View>
+          </View>
         </LinearGradient>
       </TouchableOpacity>
     </View>
@@ -157,18 +165,45 @@ const styles = StyleSheet.create({
   aiButton: {
     position: 'absolute',
     right: 20,
-    top: -28,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    top: -60,
+    elevation: 10,
+    shadowColor: '#6C22E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
     borderRadius: 28,
   },
   aiButtonGradient: {
     width: 56,
     height: 56,
     borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 2, // Added padding for the inner element
+  },
+  aiButtonInner: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 26,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  aiButtonRipple: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  aiButtonCore: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(108, 34, 229, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
   },

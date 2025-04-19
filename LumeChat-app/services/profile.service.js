@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiConfig from '../config/api.config';
+import { friendService } from './friend.service'; // Add import for friend service
 
 const API_URL = apiConfig.API_URL;
 
@@ -16,32 +17,41 @@ export const profileService = {
     getProfile: async (userId) => {
         try {
             console.log('Fetching profile for userId:', userId);
-            const response = await fetch(`${API_URL}/profile`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'user-id': userId
+            
+            // Use the friend service to get profile data instead
+            try {
+                return await friendService.getUserProfile(userId, userId);
+            } catch (friendError) {
+                console.error('Error getting profile via friend service:', friendError);
+                
+                // Fallback to direct profile endpoint
+                const response = await fetch(`${API_URL}/profile`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'user-id': userId
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch profile');
                 }
-            });
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch profile');
+                const profile = await response.json();
+
+                // Ensure profilePic is from API
+                if (!profile.profilePic) {
+                    profile.profilePic = null;
+                }
+
+                console.log('Retrieved profile with picture:', profile);
+
+                // Update AsyncStorage with API data
+                await AsyncStorage.setItem('user', JSON.stringify(profile));
+
+                return profile;
             }
-
-            const profile = await response.json();
-
-            // Ensure profilePic is from API
-            if (!profile.profilePic) {
-                profile.profilePic = null;
-            }
-
-            console.log('Retrieved profile with picture:', profile);
-
-            // Update AsyncStorage with API data
-            await AsyncStorage.setItem('user', JSON.stringify(profile));
-
-            return profile;
         } catch (error) {
             console.error('Profile fetch error:', error);
             throw error;
