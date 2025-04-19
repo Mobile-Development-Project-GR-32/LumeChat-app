@@ -3,30 +3,32 @@ import {
   View, StyleSheet, TouchableOpacity, Text, Alert, 
   ActivityIndicator, StatusBar 
 } from 'react-native';
-import { BarCodeScanner } from 'expo-barcode-scanner';
+import { Camera } from 'expo-camera';  // Use Camera instead of BarCodeScanner
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
 
 const QRScannerScreen = () => {
   const navigation = useNavigation();
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
+  const user = useSelector(state => state.user);
   
   useEffect(() => {
-    const getBarCodeScannerPermissions = async () => {
+    const getCameraPermissions = async () => {
       try {
-        // Properly import and use the permission API from expo-barcode-scanner
-        const { status } = await BarCodeScanner.requestPermissionsAsync();
+        // Use Camera permission request instead of BarCodeScanner
+        const { status } = await Camera.requestCameraPermissionsAsync();
         setHasPermission(status === 'granted');
       } catch (error) {
-        console.error("Error requesting barcode scanner permission:", error);
+        console.error("Error requesting camera permission:", error);
         setHasPermission(false);
         Alert.alert("Permission Error", "Unable to request camera permission.");
       }
     };
     
-    getBarCodeScannerPermissions();
+    getCameraPermissions();
   }, []);
 
   const handleBarCodeScanned = ({ type, data }) => {
@@ -120,9 +122,14 @@ const QRScannerScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <BarCodeScanner
+      
+      {/* Use Camera component instead of BarCodeScanner */}
+      <Camera
         style={StyleSheet.absoluteFillObject}
         onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+        barCodeScannerSettings={{
+          barCodeTypes: ['qr']
+        }}
       >
         <View style={styles.overlay}>
           <View style={styles.scannerHeader}>
@@ -147,7 +154,7 @@ const QRScannerScreen = () => {
             <MaterialIcons name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
-      </BarCodeScanner>
+      </Camera>
       
       {scanned && (
         <TouchableOpacity 

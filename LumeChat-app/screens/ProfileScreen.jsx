@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector, useDispatch } from 'react-redux';
 import * as ImagePicker from 'expo-image-picker';
 import { profileService } from '../services/profile.service';
+import { friendService } from '../services/friend.service';
 import { authService } from '../services/auth.service';
 import LogoutButton from '../components/LogoutButton';
 import { Dialog, Portal } from 'react-native-paper';
@@ -37,7 +38,7 @@ const ProfileScreen = ({ navigation }) => {
         const loadProfileData = async () => {
             setIsLoading(true);
             try {
-                const data = await profileService.getProfile(user._id);
+                const data = await friendService.getUserProfile(user._id, user._id);
                 setProfile(data);
                 dispatch({ type: 'UPDATE_USER', payload: data });
             } catch (error) {
@@ -60,7 +61,7 @@ const ProfileScreen = ({ navigation }) => {
     const loadProfile = async () => {
         setIsLoading(true);
         try {
-            const data = await profileService.getProfile(user._id);
+            const data = await friendService.getUserProfile(user._id, user._id);
             setProfile(data);
             // Update Redux store with fresh data including profilePic
             dispatch({ type: 'UPDATE_USER', payload: data });

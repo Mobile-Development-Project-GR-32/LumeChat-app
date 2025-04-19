@@ -26,52 +26,60 @@ const UserProfileScreen = ({ route, navigation }) => {
             
             // Validate both user IDs before proceeding
             if (!userId || !currentUser?._id) {
-                throw new Error('Missing user information. Please try again.');
+                console.error('Missing user information:', { 
+                    currentUserId: currentUser?._id, 
+                    targetUserId: userId 
+                });
+                // Instead of navigating to UserNotFoundScreen, show an alert and go back
+                Alert.alert(
+                    'Error', 
+                    'Could not load user profile. The user might not exist or the connection failed.',
+                    [
+                        { text: 'OK', onPress: () => navigation.goBack() }
+                    ]
+                );
+                return;
             }
             
-            // Use currentUser._id as the requesting user and userId as the target user
+            console.log('Fetching profile for userId:', userId, 'as currentUser:', currentUser._id);
+            
+            // Send all required information in a consistent format
             const profile = await friendService.getUserProfile(currentUser._id, userId);
             
             if (!profile || !profile._id) {
-                throw new Error('Invalid profile data received');
+                console.error('Invalid profile data received:', profile);
+                // Instead of navigating to UserNotFoundScreen, show an alert and go back
+                Alert.alert(
+                    'Error', 
+                    'Could not load user profile.',
+                    [
+                        { text: 'OK', onPress: () => navigation.goBack() }
+                    ]
+                );
+                return;
             }
             
-            // Make sure we're properly getting the friendship status
+            console.log('Received profile data:', profile);
             setUserProfile(profile);
             
-            // Force set the requestStatus to 'friends' if we know they are friends
-            // This will fix the case where the API isn't properly setting the status
-            if (profile.friendshipStatus === 'friends' || profile.isFriend === true) {
-                setRequestStatus('friends');
-            } else {
-                // Try to get the friendship status another way if not found in the profile
-                try {
-                    const friendsList = await friendService.getFriends(currentUser._id);
-                    const isFriend = friendsList.some(friend => friend._id === userId);
-                    
-                    if (isFriend) {
-                        setRequestStatus('friends');
-                    } else if (profile.friendshipStatus) {
-                        setRequestStatus(profile.friendshipStatus);
-                    } else {
-                        // If nothing else, check for pending requests
-                        const pendingRequests = await friendService.getFriendRequests(currentUser._id);
-                        const isIncoming = pendingRequests.some(request => request._id === userId);
-                        
-                        if (isIncoming) {
-                            setRequestStatus('pending_incoming');
-                        } else {
-                            // Default to none if we can't determine status
-                            setRequestStatus('none');
-                        }
-                    }
-                } catch (error) {
-                    console.error("Error checking friendship lists:", error);
-                    // Keep whatever status we got from the profile
-                    if (profile.friendshipStatus) {
-                        setRequestStatus(profile.friendshipStatus);
-                    }
+            // Determine friendship status with proper error handling
+            try {
+                const isFriend = profile.isFriend === true || profile.friendshipStatus === 'friends';
+                const isPending = profile.friendshipStatus === 'pending_outgoing' || 
+                                  profile.friendshipStatus === 'pending_incoming';
+                
+                if (isFriend) {
+                    setRequestStatus('friends');
+                } else if (isPending) {
+                    setRequestStatus(profile.friendshipStatus);
+                } else {
+                    setRequestStatus('none');
                 }
+                
+                console.log('Set friendship status to:', requestStatus);
+            } catch (statusError) {
+                console.error('Error determining friendship status:', statusError);
+                setRequestStatus('none');
             }
         } catch (error) {
             console.error('Failed to load user profile:', error);
@@ -142,7 +150,7 @@ const UserProfileScreen = ({ route, navigation }) => {
     };
 
     const handleStartChat = () => {
-        navigation.navigate('ChatScreen', {
+        navigation.navigate('DirectMessages', {
             userId: userProfile._id,
             userName: userProfile.fullName,
             userAvatar: userProfile.profilePic
