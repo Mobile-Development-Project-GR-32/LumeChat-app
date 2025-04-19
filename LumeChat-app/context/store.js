@@ -5,28 +5,46 @@ const initialState = {
   user: null
 };
 
-const userReducer = (state = null, action) => {
-  switch (action.type) {
-    case 'SET_USER':
-      return action.payload;
-    case 'UPDATE_USER':
-      return { ...state, ...action.payload };
-    case 'CLEAR_USER':
-      return null;
-    default:
-      return state;
-  }
-};
-
 const reducer = (state = initialState, action) => {
   switch (action.type) {
     case 'SET_USER':
       console.log('Setting user in Redux:', action.payload);
-      AsyncStorage.setItem('user', JSON.stringify(action.payload));
+      
+      // Don't set user if it's a fallback profile unless we have no current user
+      if (action.payload && action.payload.isFallback && state.user && !state.user.isFallback) {
+        console.warn('Rejecting fallback profile since we already have a complete profile');
+        return state;
+      }
+      
+      // If it's not a fallback, update AsyncStorage
+      if (action.payload && !action.payload.isFallback) {
+        AsyncStorage.setItem('user', JSON.stringify(action.payload));
+      }
+      
       return { ...state, user: action.payload };
+      
+    case 'UPDATE_USER':
+      console.log('Updating user in Redux:', action.payload);
+      
+      // Don't update with fallback data
+      if (action.payload && action.payload.isFallback) {
+        console.warn('Rejecting fallback data for user update');
+        return state;
+      }
+      
+      const updatedUser = { ...state.user, ...action.payload };
+      
+      // Store in AsyncStorage if we have a valid user
+      if (updatedUser._id) {
+        AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+      
+      return { ...state, user: updatedUser };
+      
     case 'CLEAR_USER':
       AsyncStorage.removeItem('user');
       return { ...state, user: null };
+      
     default:
       return state;
   }
