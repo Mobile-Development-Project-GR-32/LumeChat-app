@@ -1,4 +1,5 @@
 import apiConfig from '../config/api.config';
+import { notificationService } from './notification.service';
 
 const API_URL = apiConfig.API_URL;
 
@@ -285,6 +286,19 @@ export const messageService = {
           // Call callback for each new message
           newMessages.forEach(message => {
             callback(message);
+            
+            // Show notification if message is not from current user
+            if (message.senderId !== callback.userId) {
+              try {
+                const notificationService = require('./notification.service').default;
+                notificationService.showMessageNotification(
+                  message,
+                  response.channelName || 'channel'
+                );
+              } catch (e) {
+                console.log('Notification service not available');
+              }
+            }
           });
         }
       } catch (error) {
@@ -330,6 +344,16 @@ export const messageService = {
           // Call callback for each new message
           newMessages.forEach(message => {
             callback(message);
+            
+            // Show notification if message is not from current user
+            if (message.senderId !== userId) {
+              try {
+                const notificationService = require('./notification.service').default;
+                notificationService.showMessageNotification(message);
+              } catch (e) {
+                console.log('Notification service not available');
+              }
+            }
           });
         }
       } catch (error) {

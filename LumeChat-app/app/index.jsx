@@ -16,7 +16,9 @@ import DirectMessagesScreen from '../screens/DirectMessagesScreen';
 import CreateChannelScreen from "../screens/CreateChannelScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import SettingsScreen from "../screens/settings/SettingsScreen";
-import NotificationsScreen from "../screens/settings/NotificationsScreen";
+// Import main notifications screen
+import NotificationsScreen from "../screens/Notifications_Screen"; 
+// Remove the incorrect import for settings notification screen
 import PrivacyScreen from "../screens/settings/PrivacyScreen";
 import SecurityScreen from "../screens/settings/SecurityScreen";
 import ThemeScreen from "../screens/settings/ThemeScreen";
@@ -138,16 +140,8 @@ const AppContent = () => {
         }}
       />
       
-      <Stack.Screen name="Notifications" component={NotificationsScreen}
-        options={{
-          headerShown: true,
-          headerTitle: 'Notifications',
-          headerStyle: {
-            backgroundColor: '#2f3136',
-          },
-          headerTintColor: '#fff',
-        }}
-      />
+      {/* Remove NotificationsSettings screen since the file doesn't exist */}
+      
       <Stack.Screen name="Privacy" component={PrivacyScreen}
         options={{
           headerShown: true,
@@ -249,6 +243,13 @@ const AppContent = () => {
           },
           headerTintColor: '#fff',
         }}
+      />
+
+      {/* Add notifications screen route */}
+      <Stack.Screen 
+        name="Notifications_Screen" 
+        component={NotificationsScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
