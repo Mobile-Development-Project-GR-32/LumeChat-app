@@ -14,114 +14,54 @@ export const friendService = {
         };
     },
 
-    // Get user profile
-    getUserProfile: async (userId, targetUserId) => {
+    // Get user profile with friendship status
+    getUserProfileWithFriendshipStatus: async (userId, targetUserId) => {
         try {
-            console.log(`Fetching profile for targetUserId: ${targetUserId} as userId: ${userId}`);
+            console.log(`Fetching profile with friendship status: userId=${userId}, targetId=${targetUserId}`);
             
-            // Make sure both IDs are provided
-            if (!userId || !targetUserId) {
-                console.error('Missing user IDs for profile fetch:', { userId, targetUserId });
-                throw new Error('Missing required user IDs');
-            }
-            
-            // Special case: if requesting own profile, use more complete endpoint
-            if (userId === targetUserId) {
-                console.log('Getting own profile, using self-profile endpoint');
-                try {
-                    const response = await fetch(
-                        `${API_URL}/profile`, 
-                        {
-                            method: 'GET',
-                            headers: friendService.getHeaders(userId)
-                        }
-                    );
-        
-                    if (!response.ok) {
-                        throw new Error(`Failed with status: ${response.status}`);
-                    }
-        
-                    const data = await response.json();
-                    
-                    // If we didn't receive a proper profile, throw an error
-                    if (!data || typeof data !== 'object') {
-                        throw new Error('Invalid profile data received');
-                    }
-                    
-                    // Ensure the returned data has an ID field
-                    return {
-                        ...data,
-                        _id: data._id || data.id || targetUserId,
-                        id: data.id || data._id || targetUserId
-                    };
-                } catch (selfProfileError) {
-                    console.warn('Self-profile endpoint failed:', selfProfileError.message);
-                    // Fall back to the regular profile endpoint
-                }
-            }
-            
-            // Regular profile endpoint - get user details
-            const response = await fetch(
-                `${API_URL}/users/${targetUserId}/profile`, 
-                {
-                    method: 'GET',
-                    headers: friendService.getHeaders(userId)
-                }
-            );
-
-            // Log response status and content type for debugging
-            console.log(`Profile response status: ${response.status}`);
-            console.log(`Content-Type: ${response.headers.get('content-type')}`);
+            const response = await fetch(`${API_URL}/friends/profile/${targetUserId}`, {
+                method: 'GET',
+                headers: friendService.getHeaders(userId)
+            });
 
             if (!response.ok) {
-                const errorBody = await response.text();
-                console.error('Profile fetch error response:', errorBody);
-                throw new Error(`Failed to fetch user profile: ${response.status}`);
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to fetch user profile');
             }
 
-            let data;
-            try {
-                data = await response.json();
-            } catch (jsonError) {
-                console.error('Error parsing profile JSON:', jsonError);
-                throw new Error('Invalid JSON in profile response');
+            const profile = await response.json();
+            console.log('Profile with friendship status:', profile);
+            
+            // Normalize friendship status - handle both 'friend' and 'friends'
+            let normalizedStatus = profile.friendshipStatus || 'none';
+            if (normalizedStatus === 'friend') {
+                normalizedStatus = 'friends';
             }
             
-            console.log('Raw profile data received:', data);
-            
-            // If we didn't receive a proper profile, throw an error
-            if (!data || typeof data !== 'object') {
-                throw new Error('Invalid profile data received');
-            }
-            
-            // If profile is missing key information, add fallback indicator
-            if (!data.fullName || !data.username) {
-                console.warn('Incomplete profile data received');
-                data.isFallback = true;
-                data.fullName = data.fullName || 'Unknown User';
-                data.username = data.username || 'user';
-                data.status = data.status || 'Status unavailable';
-            }
-            
-            // Ensure the returned data has consistent ID fields
+            // Just ensure the profile has consistent IDs and return it directly
             return {
-                ...data,
-                _id: data._id || data.id || targetUserId,
-                id: data.id || data._id || targetUserId
+                ...profile,
+                _id: profile._id || profile.id || targetUserId,
+                id: profile.id || profile._id || targetUserId,
+                // Normalize the friendshipStatus property
+                friendshipStatus: normalizedStatus,
+                // Set isFriend flag for compatibility with older code
+                isFriend: normalizedStatus === 'friends' || normalizedStatus === 'friend'
             };
         } catch (error) {
+            console.error('Get user profile with friendship error:', error);
+            throw error;
+        }
+    },
+
+    // Get user profile using the friendship status API
+    getUserProfile: async (userId, targetUserId) => {
+        try {
+            // Simply call the getUserProfileWithFriendshipStatus method to ensure consistent behavior
+            return await friendService.getUserProfileWithFriendshipStatus(userId, targetUserId);
+        } catch (error) {
             console.error('User profile fetch error:', error);
-            
-            // Return a fallback profile with the target user ID
-            return {
-                _id: targetUserId,
-                id: targetUserId,
-                fullName: 'Unknown User',
-                username: 'user',
-                status: 'Status unavailable',
-                isFallback: true,
-                friendshipStatus: 'none'
-            };
+            throw error;
         }
     },
 
