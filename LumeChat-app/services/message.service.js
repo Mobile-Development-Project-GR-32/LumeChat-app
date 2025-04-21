@@ -153,30 +153,9 @@ export const messageService = {
         throw new Error(error.error || 'Failed to fetch channel messages');
       }
       
-      // Get response as text first
-      const responseText = await response.text();
-      
-      // Log the first part of the response to debug
-      console.log(`API response start: ${responseText.substring(0, 200)}...`);
-      
-      let result;
-      try {
-        // Try to parse as JSON
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Error parsing response as JSON:', parseError);
-        console.log('Raw response:', responseText);
-        throw new Error('Server returned invalid JSON');
-      }
-      
-      // Process the result
-      const messagesArray = Array.isArray(result) ? result : 
-                            (result.messages && Array.isArray(result.messages) ? result.messages : []);
-      
-      console.log(`Successfully parsed ${messagesArray.length} messages from response`);
-      
-      // If we received an array directly, wrap it to match the expected format
-      return Array.isArray(result) ? { messages: result } : result;
+      const result = await response.json();
+      console.log(`Fetched ${result.messages.length} channel messages`);
+      return result;
     } catch (error) {
       console.error('Get channel messages error:', error);
       throw error;

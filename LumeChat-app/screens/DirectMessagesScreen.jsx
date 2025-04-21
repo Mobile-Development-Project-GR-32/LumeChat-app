@@ -138,8 +138,16 @@ const DirectMessagesScreen = ({ route, navigation }) => {
           isMine: newMessage.senderId === currentUser._id
         };
         
+        // Check if the message already exists in the state
+        // Using a more robust check with both ID and content
         setMessages(prevMessages => {
-          if (!prevMessages.find(msg => msg.id === formattedMessage.id)) {
+          const messageExists = prevMessages.some(msg => 
+            (msg.id === formattedMessage.id) || 
+            (msg.text === formattedMessage.text && 
+             Math.abs(new Date(msg.createdAt) - new Date(formattedMessage.createdAt)) < 5000)
+          );
+          
+          if (!messageExists) {
             return [...prevMessages, formattedMessage];
           }
           return prevMessages;
@@ -191,19 +199,15 @@ const DirectMessagesScreen = ({ route, navigation }) => {
     setInputText('');
     setIsSending(true);
     
+    // Generate a temporary ID for local message tracking
+    const tempMessageId = `local-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
     try {
       console.log(`Sending message to ${userId}: ${messageText}`);
       
-      const sentMessage = await messageService.postDirectMessage(
-        currentUser._id,
-        userId,
-        messageText
-      );
-      
-      console.log('Message sent successfully:', sentMessage);
-      
+      // Add message to state immediately for better UX
       const tempMessage = {
-        id: sentMessage.id || `local-${Date.now()}`,
+        id: tempMessageId,
         text: messageText,
         createdAt: new Date(),
         user: {
@@ -211,10 +215,30 @@ const DirectMessagesScreen = ({ route, navigation }) => {
           name: currentUser.fullName,
           avatar: currentUser.profilePic
         },
-        isMine: true
+        isMine: true,
+        pending: true // Mark as pending until confirmed
       };
       
+      // Add temporary message to state
       setMessages(prevMessages => [...prevMessages, tempMessage]);
+      
+      // Send to server
+      const sentMessage = await messageService.sendDirectMessage(
+        currentUser._id,
+        userId,
+        messageText
+      );
+      
+      console.log('Message sent successfully:', sentMessage);
+      
+      // Update the temporary message with server details
+      setMessages(prevMessages => prevMessages.map(msg => 
+        msg.id === tempMessageId ? {
+          ...msg,
+          id: sentMessage.id || msg.id,
+          pending: false
+        } : msg
+      ));
       
       setTimeout(() => {
         if (flatListRef.current) {
@@ -224,6 +248,12 @@ const DirectMessagesScreen = ({ route, navigation }) => {
       
     } catch (error) {
       console.error('Failed to send message:', error);
+      
+      // Mark the message as failed
+      setMessages(prevMessages => prevMessages.map(msg => 
+        msg.id === tempMessageId ? { ...msg, failed: true, pending: false } : msg
+      ));
+      
       Alert.alert('Error', 'Failed to send message');
     } finally {
       setIsSending(false);
@@ -233,7 +263,22 @@ const DirectMessagesScreen = ({ route, navigation }) => {
   const renderMessageItem = () => {
     console.log(`Rendering ${messages.length} messages`);
     if (messages.length > 0) {
-      return messages.map((msg, index) => {
+      // First, deduplicate messages by content and timestamp proximity
+      const uniqueMessages = messages.reduce((acc, current) => {
+        const isDuplicate = acc.some(item => 
+          (item.id === current.id) || 
+          (item.text === current.text && 
+           Math.abs(new Date(item.createdAt) - new Date(current.createdAt)) < 5000 &&
+           item.user._id === current.user._id)
+        );
+        
+        if (!isDuplicate) {
+          acc.push(current);
+        }
+        return acc;
+      }, []);
+      
+      return uniqueMessages.map((msg, index) => {
         const isCurrentUser = msg.user._id === currentUser._id;
         const messageTime = new Date(msg.createdAt).toLocaleTimeString([], { 
           hour: '2-digit', 
@@ -247,7 +292,8 @@ const DirectMessagesScreen = ({ route, navigation }) => {
               flexDirection: 'row',
               justifyContent: isCurrentUser ? 'flex-end' : 'flex-start',
               marginBottom: 12,
-              alignItems: 'flex-end'
+              alignItems: 'flex-end',
+              opacity: msg.pending ? 0.7 : 1 // Slightly dim pending messages
             }}
           >
             {!isCurrentUser && (
@@ -266,7 +312,9 @@ const DirectMessagesScreen = ({ route, navigation }) => {
             
             <View style={{
               maxWidth: '70%',
-              backgroundColor: isCurrentUser ? THEME_COLORS.primary : '#2F3136',
+              backgroundColor: isCurrentUser ? 
+                (msg.failed ? '#f04747' : THEME_COLORS.primary) : 
+                '#2F3136',
               padding: 12,
               borderRadius: 18,
               borderBottomLeftRadius: isCurrentUser ? 18 : 4,
@@ -284,14 +332,50 @@ const DirectMessagesScreen = ({ route, navigation }) => {
               
               <Text style={{color: '#FFFFFF'}}>{msg.text}</Text>
               
-              <Text style={{
-                color: 'rgba(255,255,255,0.5)', 
-                fontSize: 10,
-                marginTop: 4,
-                textAlign: isCurrentUser ? 'right' : 'left'
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: 4
               }}>
-                {messageTime}
-              </Text>
+                <Text style={{
+                  color: 'rgba(255,255,255,0.5)', 
+                  fontSize: 10,
+                  textAlign: isCurrentUser ? 'right' : 'left',
+                  flex: 1
+                }}>
+                  {messageTime}
+                </Text>
+                
+                {msg.pending && (
+                  <Text style={{
+                    color: 'rgba(255,255,255,0.5)',
+                    fontSize: 10,
+                    marginLeft: 4
+                  }}>
+                    sending...
+                  </Text>
+                )}
+                
+                {msg.failed && (
+                  <TouchableOpacity 
+                    onPress={() => {
+                      // Re-try sending the failed message
+                      const failedText = msg.text;
+                      setMessages(prev => prev.filter(m => m.id !== msg.id));
+                      setInputText(failedText);
+                    }}
+                  >
+                    <Text style={{
+                      color: '#ffffff',
+                      fontSize: 10,
+                      marginLeft: 4
+                    }}>
+                      retry
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
             
             {isCurrentUser && <View style={{width: 32}} />}
