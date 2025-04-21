@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Provider } from "react-redux";
 import Store from "../context/store";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { Provider as PaperProvider } from 'react-native-paper';
+import { StreamVideo, StreamVideoClient } from '@stream-io/video-react-native-sdk'
 
 // Import your screen components
 import LoginScreen from "../screens/LoginScreen";
@@ -169,10 +170,13 @@ const AppContent = () => {
 };
 
 const App = () => {
+  const callClient = new StreamVideoClient({apiKey: process.env.GETSTREAM_API_KEY});
   return (
     <Provider store={Store}>
       <PaperProvider>
-        <AppContent />
+        <StreamVideo client={callClient}>
+          <AppContent />
+        </StreamVideo>
       </PaperProvider>
     </Provider>
   );

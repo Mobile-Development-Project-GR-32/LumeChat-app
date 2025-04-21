@@ -4,6 +4,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useSelector } from "react-redux";
 import { useState, useEffect } from "react";
 import { messageService } from "../services/message.service"
+import { useStreamVideoClient } from "@stream-io/video-react-native-sdk";
 
 const ChatMessage = ({messageData, receiverAvatar, userName}) => {
     const user = useSelector((state) => state.user);
@@ -18,7 +19,7 @@ const ChatMessage = ({messageData, receiverAvatar, userName}) => {
                 <Image 
                   source={{ uri: receiverAvatar }}
                   style={styles.botAvatar}
-                  defaultSource={require('../../assets/default-avatar.png')}
+                  defaultSource={require('../assets/default-avatar.png')}
                 />
               ) : (
                 <View style={[styles.botAvatarContainer, styles.botAvatar]}>

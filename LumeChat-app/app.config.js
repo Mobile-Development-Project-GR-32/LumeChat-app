@@ -13,6 +13,7 @@ export default {
       supportsTablet: true
     },
     android: {
+      package: "com.lumechat.app",
       adaptiveIcon: {
         backgroundColor: "#ffffff"
       }
@@ -43,6 +44,14 @@ export default {
             newArchEnabled: true
           }
         }
+      ],
+      "@stream-io/video-react-native-sdk",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "$(PRODUCT_NAME) requires camera access in order to capture and transmit video",
+          "microphonePermission": "$(PRODUCT_NAME) requires microphone access in order to capture and transmit audio"
+        }
       ]
     ],
     experiments: {
@@ -58,7 +67,10 @@ export default {
         appId: process.env.FIREBASE_APP_ID,
         measurementId: process.env.FIREBASE_MEASUREMENT_ID
       },
-      apiUrl: process.env.API_URL
+      apiUrl: process.env.API_URL,
+      eas: {
+        projectId: "3c56aa1c-3990-4eed-b243-aa2a49b147fa"
+      }
     }
   }
 };

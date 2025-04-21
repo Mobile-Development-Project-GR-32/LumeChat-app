@@ -8,6 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { authService } from '../services/auth.service';
 import { useDispatch } from 'react-redux';
+import { useStreamVideoClient } from "@stream-io/video-react-native-sdk";
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");
@@ -16,6 +17,7 @@ const LoginScreen = () => {
   const [showPassword, setShowPassword] = useState(false); // Added state for password visibility
   const navigation = useNavigation();
   const dispatch = useDispatch();
+  const streamClient = useStreamVideoClient();
 
   // Add Animated value for logo
   const [logoAnim] = useState(new Animated.Value(0));
@@ -37,8 +39,10 @@ const LoginScreen = () => {
     setIsLoading(true);
     try {
       const userData = await authService.signIn(email, password);
+      const streamUser = { id: userData._id }
       console.log('Login successful:', userData);
       dispatch({ type: 'SET_USER', payload: userData });
+      streamClient.connectUser(streamUser, userData.token)
       navigation.replace("HomeScreen");
     } catch (error) {
       console.error('Login error:', error);
