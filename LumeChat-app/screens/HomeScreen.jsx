@@ -1,41 +1,154 @@
-import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet, TextInput, Alert, ActivityIndicator } from 'react-native'
-import React, { useState, useEffect } from 'react'
+import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet, TextInput, Alert, ActivityIndicator, FlatList } from 'react-native'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useSelector } from 'react-redux'
 import { MaterialIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native'; // Add this import
 import { channelService } from '../services/channel.service';
+import { conversationService } from '../services/conversation.service';
 import BottomNavBar from '../components/BottomNavBar';
 import SideDrawer from '../components/SideDrawer';
 import SearchScreen from './SearchScreen';
 import { LinearGradient } from 'expo-linear-gradient';
 import { userStatusManager } from '../utils/userStatusManager';
 
-const ChannelItem = ({ channel, navigation }) => (
+// Conversation Item component for direct messages and channels
+const ConversationItem = ({ conversation, navigation }) => (
   <TouchableOpacity 
-    onPress={() => navigation.navigate('ChannelChat', {channel: channel})}
-    style={[styles.channelItem, channel.isActive && styles.activeChannel]}
+    onPress={() => {
+      if (conversation.isChannel) {
+        navigation.navigate('ChannelChat', { channel: conversation });
+      } else {
+        navigation.navigate('DirectMessages', { 
+          userId: conversation.userId, 
+          userName: conversation.name,
+          userAvatar: conversation.photo || null
+        });
+      }
+    }}
+    style={[
+      styles.conversationItem, 
+      conversation.isChannel && styles.channelConversationItem,
+      conversation.unreadCount > 0 && styles.unreadConversationItem
+    ]}
   >
-    <View style={styles.channelIconContainer}>
-      <MaterialIcons 
-        name={channel.isPublic ? "tag" : "lock"} 
-        size={20} 
-        color="#8e9297" 
-      />
-    </View>
-    <View style={styles.channelContent}>
-      <Text style={styles.channelName}>{channel.name}</Text>
-      {channel.description && (
-        <Text style={styles.channelDescription} numberOfLines={1}>
-          {channel.description}
-        </Text>
+    <View style={styles.avatarContainer}>
+      {conversation.isChannel ? (
+        <View style={[styles.channelIconContainer, { backgroundColor: conversation.isPublic ? '#7289da' : '#747f8d' }]}>
+          <MaterialIcons 
+            name={conversation.isPublic ? "tag" : "lock"} 
+            size={20} 
+            color="#ffffff" 
+          />
+        </View>
+      ) : (
+        <>
+          {conversation.photo ? (
+            <Image source={{ uri: conversation.photo }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatarPlaceholder, { backgroundColor: '#43b581' }]}>
+              <Text style={styles.avatarInitial}>
+                {conversation.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <View style={[styles.statusIndicator, { backgroundColor: '#43b581' }]} />
+        </>
       )}
     </View>
-    {channel.unreadCount > 0 && (
+    
+    <View style={styles.conversationContent}>
+      <View style={styles.conversationHeader}>
+        <Text style={[
+          styles.conversationName,
+          conversation.unreadCount > 0 && styles.unreadText
+        ]}>
+          {conversation.isChannel ? `# ${conversation.name}` : conversation.name}
+        </Text>
+        <Text style={[
+          styles.timeStamp,
+          conversation.unreadCount > 0 && styles.unreadTimeStamp
+        ]}>
+          {conversation.lastMessage?.time || ''}
+        </Text>
+      </View>
+      
+      <View style={styles.messageInfoContainer}>
+        {conversation.isChannel && (
+          <Text style={styles.channelTypeTag}>
+            {conversation.isPublic ? 'Public' : 'Private'}
+          </Text>
+        )}
+        <Text 
+          style={[
+            styles.lastMessageText, 
+            conversation.isChannel && styles.channelMessageText,
+            conversation.unreadCount > 0 && styles.unreadText
+          ]} 
+          numberOfLines={1}
+        >
+          {conversation.lastMessage?.content || 'No messages yet'}
+        </Text>
+      </View>
+    </View>
+    
+    {conversation.unreadCount > 0 && (
       <View style={styles.unreadBadge}>
-        <Text style={styles.unreadCount}>{channel.unreadCount}</Text>
+        <Text style={styles.unreadCount}>
+          {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+        </Text>
       </View>
     )}
   </TouchableOpacity>
 );
+
+// Channel Item component for channels list
+const ChannelItem = ({ channel, navigation }) => {
+  // Ensure unreadCount is treated as a number
+  const unreadCount = parseInt(channel.unreadCount || 0);
+  
+  return (
+    <TouchableOpacity 
+      onPress={() => navigation.navigate('ChannelChat', {channel: channel})}
+      style={[
+        styles.channelItem, 
+        channel.isActive && styles.activeChannel,
+        unreadCount > 0 && styles.unreadChannelItem
+      ]}
+    >
+      <View style={[
+        styles.channelIconContainer,
+        unreadCount > 0 && styles.unreadChannelIconContainer
+      ]}>
+        <MaterialIcons 
+          name={channel.isPublic ? "tag" : "lock"} 
+          size={20} 
+          color={unreadCount > 0 ? "#ffffff" : "#8e9297"} 
+        />
+      </View>
+      <View style={styles.channelContent}>
+        <Text style={[
+          styles.channelName,
+          unreadCount > 0 && styles.unreadText
+        ]}>
+          {channel.name}
+        </Text>
+        {channel.description && (
+          <Text style={[
+            styles.channelDescription,
+            unreadCount > 0 && styles.unreadChannelDescription
+          ]} numberOfLines={1}>
+            {channel.description}
+          </Text>
+        )}
+      </View>
+      {unreadCount > 0 && (
+        <View style={styles.unreadBadge}>
+          <Text style={styles.unreadCount}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
 
 const CategoryHeader = ({ name, count }) => (
   <View style={styles.categoryHeader}>
@@ -49,8 +162,9 @@ const CategoryHeader = ({ name, count }) => (
 
 const HomeScreen = ({ route, navigation }) => {
   const user = useSelector((state) => state.user);
-  const [selectedTab, setSelectedTab] = useState('public');
+  const [selectedTab, setSelectedTab] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversations, setConversations] = useState([]);
   const [activeTab, setActiveTab] = useState('home');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -67,42 +181,81 @@ const HomeScreen = ({ route, navigation }) => {
     private: []
   });
 
-  const fetchChannels = async () => {
+  // Fetch conversations and channels
+  const fetchData = async () => {
     setIsLoading(true);
     try {
-      console.log('Current user:', user);
+      // Fetch conversations
+      if (user?._id) {
+        const conversationsData = await conversationService.getAllConversations(user._id);
+        
+        if (conversationsData && conversationsData.conversations) {
+          // Format conversations for display
+          const formattedConversations = conversationsData.conversations.map(
+            conversation => conversationService.formatForDisplay(conversation)
+          );
+          setConversations(formattedConversations);
+        }
+        
+        // Fetch channels
+        const publicData = await channelService.getPublicChannels(user._id);
+        const privateData = await channelService.getPrivateChannels(user._id);
 
-      const publicData = await channelService.getPublicChannels(user._id);
-      const privateData = await channelService.getPrivateChannels(user._id);
-
-      console.log('Fetched public channels:', publicData);
-      console.log('Fetched private channels:', privateData);
-
-      setChannels({
-        public: publicData || [],
-        private: privateData || []
-      });
+        setChannels({
+          public: publicData || [],
+          private: privateData || []
+        });
+      }
     } catch (error) {
-      console.error('Error fetching channels:', error);
-      Alert.alert('Error', 'Failed to load channels');
+      console.error('Error fetching data:', error);
+      Alert.alert('Error', 'Failed to load conversations and channels');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Refresh data when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('HomeScreen is in focus, refreshing data...');
+      if (user?._id) {
+        fetchData();
+      }
+      return () => {
+        // Cleanup function when screen loses focus (optional)
+      };
+    }, [user?._id])
+  );
+
   useEffect(() => {
     if (user?._id) {
-      fetchChannels();
+      fetchData();
+      
+      // Set up real-time listener for conversation updates
+      const cleanupListener = conversationService.setupRealtimeListener(
+        user._id,
+        (update) => {
+          if (update.type === 'update') {
+            // Refresh the conversation list when we get an update
+            fetchData();
+          }
+        }
+      );
+      
+      return () => {
+        // Clean up the listener when component unmounts
+        if (cleanupListener) cleanupListener();
+      };
     } else {
       console.log('No user ID found, user state:', user);
       navigation.replace('LoginScreen');
     }
   }, [user]);
 
-  // Refresh channels when coming back from create channel
+  // Refresh data when coming back from other screens
   useEffect(() => {
     if (route.params?.refresh) {
-      fetchChannels();
+      fetchData();
       // Clear the refresh parameter
       navigation.setParams({ refresh: undefined });
     }
@@ -164,6 +317,64 @@ const HomeScreen = ({ route, navigation }) => {
     }
   };
 
+  // Get filtered data based on selected tab
+  const getFilteredData = () => {
+    switch (selectedTab) {
+      case 'public':
+      case 'private':
+        // For channel tabs, we'll use the channel data from renderChannels
+        return [];
+      case 'all':
+      default:
+        return conversations;
+    }
+  };
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialIcons name="chat-bubble-outline" size={64} color="#8e9297" />
+      <Text style={styles.emptyText}>
+        {selectedTab === 'all' ? 'No conversations yet' : 
+         selectedTab === 'public' ? 'No public channels yet' : 'No private channels yet'}
+      </Text>
+      <Text style={styles.emptySubtext}>
+        {selectedTab === 'all' ? 'Start chatting with someone or join a channel' : 
+         'Join or create a new channel'}
+      </Text>
+    </View>
+  );
+
+  const renderConversations = () => {
+    const filteredData = getFilteredData();
+    
+    if (isLoading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#7289da" />
+        </View>
+      );
+    }
+    
+    if (filteredData.length === 0 && selectedTab === 'all') {
+      return renderEmptyState();
+    }
+    
+    // Show all conversations in a flat list, similar to WhatsApp
+    return (
+      <FlatList
+        data={filteredData}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <ConversationItem 
+            conversation={item}
+            navigation={navigation}
+          />
+        )}
+        contentContainerStyle={styles.conversationsList}
+      />
+    );
+  };
+
   const renderChannels = () => {
     const currentChannels = channels[selectedTab] || [];
     if (isLoading) {
@@ -185,13 +396,23 @@ const HomeScreen = ({ route, navigation }) => {
       );
     }
 
+    // Debug the channels to see if they have unreadCount
+    console.log('Channels for tab', selectedTab, currentChannels.map(c => ({
+      name: c.name,
+      unreadCount: c.unreadCount,
+      id: c.id
+    })));
+
     // Group channels by category if they're not already grouped
     const groupedChannels = currentChannels.reduce((acc, channel) => {
       const category = channel.category || 'GENERAL';
       if (!acc[category]) {
         acc[category] = { category, channels: [] };
       }
-      acc[category].channels.push(channel);
+      acc[category].channels.push({
+        ...channel,
+        unreadCount: parseInt(channel.unreadCount || 0) // Ensure unreadCount is a number
+      });
       return acc;
     }, {});
 
@@ -203,10 +424,11 @@ const HomeScreen = ({ route, navigation }) => {
         <CategoryHeader name={category.category} count={category.channels.length} />
         {Array.isArray(category.channels) && category.channels.map((channel, channelIndex) => (
           <ChannelItem 
-            key={`${category.category}-${channel.name}-${channelIndex}`}
+            key={`${category.category}-${channel.id || channel.name}-${channelIndex}`}
             channel={{
               ...channel,
-              isPublic: selectedTab === 'public'
+              isPublic: selectedTab === 'public',
+              isChannel: true
             }}
             navigation={navigation}
           />
@@ -255,23 +477,31 @@ const HomeScreen = ({ route, navigation }) => {
         {renderHeader()}
         <View style={styles.tabContainer}>
           <TouchableOpacity 
+            style={[styles.tab, selectedTab === 'all' && styles.selectedTab]}
+            onPress={() => setSelectedTab('all')}
+          >
+            <Text style={styles.tabText}>All</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
             style={[styles.tab, selectedTab === 'public' && styles.selectedTab]}
             onPress={() => setSelectedTab('public')}
           >
-            <Text style={styles.tabText}>Public Channels</Text>
+            <Text style={styles.tabText}>Public</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.tab, selectedTab === 'private' && styles.selectedTab]}
             onPress={() => setSelectedTab('private')}
           >
-            <Text style={styles.tabText}>Private Channels</Text>
+            <Text style={styles.tabText}>Private</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.channelList}>
-          {/* Channel List */}
-          {renderChannels()}
-        </ScrollView>
+        <View style={styles.contentContainer}>
+          {/* Show correct content based on selected tab */}
+          {selectedTab === 'public' || selectedTab === 'private' 
+            ? renderChannels() 
+            : renderConversations()}
+        </View>
 
         <BottomNavBar
           activeTab={activeTab}
@@ -342,9 +572,138 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  channelList: {
+  contentContainer: {
     flex: 1,
-    paddingTop: 8,
+  },
+  conversationsList: {
+    paddingVertical: 8,
+  },
+  conversationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    marginHorizontal: 8,
+    marginVertical: 2,
+    borderRadius: 8,
+    backgroundColor: '#2f3136',
+  },
+  channelConversationItem: {
+    backgroundColor: '#36393f',
+    borderLeftWidth: 3,
+    borderLeftColor: '#7289da',
+  },
+  unreadConversationItem: {
+    backgroundColor: '#383b40', // Slightly brighter background for unread items
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  avatarPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarInitial: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  statusIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: '#36393f',
+  },
+  channelIconContainer: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    marginRight: 4,
+  },
+  unreadChannelIconContainer: {
+    backgroundColor: '#4f545c', // Brighter background for unread items
+  },
+  conversationContent: {
+    flex: 1,
+  },
+  conversationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  conversationName: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  timeStamp: {
+    color: '#8e9297',
+    fontSize: 12,
+  },
+  unreadTimeStamp: {
+    color: '#ffffff',
+  },
+  unreadText: {
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  messageInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  channelTypeTag: {
+    fontSize: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    backgroundColor: '#4f545c',
+    borderRadius: 10,
+    color: '#ffffff',
+    marginRight: 6,
+  },
+  lastMessageText: {
+    color: '#b9bbbe',
+    fontSize: 14,
+    flex: 1,
+  },
+  channelMessageText: {
+    fontStyle: 'italic',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#202225',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    color: '#8e9297',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.7,
+  },
+  sectionCount: {
+    color: '#8e9297',
+    fontSize: 12,
+    fontWeight: '500',
   },
   categoryHeader: {
     flexDirection: 'row',
@@ -381,14 +740,10 @@ const styles = StyleSheet.create({
   activeChannel: {
     backgroundColor: '#454950',
   },
-  channelIconContainer: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#202225',
-    borderRadius: 12,
-    marginRight: 12,
+  unreadChannelItem: {
+    backgroundColor: '#383b40', // Slightly brighter background for unread items
+    borderLeftWidth: 3,
+    borderLeftColor: '#f04747',
   },
   channelContent: {
     flex: 1,
@@ -403,6 +758,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
     maxWidth: '90%',
+  },
+  unreadChannelDescription: {
+    color: '#b9bbbe',
+    fontWeight: '500',
   },
   unreadBadge: {
     backgroundColor: '#f04747',
@@ -424,10 +783,21 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   emptyText: {
-    color: '#8e9297',
-    fontSize: 16,
+    color: '#dcddde',
+    fontSize: 18,
     textAlign: 'center',
-    lineHeight: 24,
+    marginTop: 12,
+  },
+  emptySubtext: {
+    color: '#8e9297',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   mainContent: {
     flex: 1,
