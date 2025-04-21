@@ -24,10 +24,8 @@ const ChannelItem = ({ channel, navigation }) => (
     <View style={styles.channelContent}>
       <Text style={styles.channelName}>{channel.name}</Text>
       {channel.description && (
-        <Text style={styles.channelMeta}>
-          {channel.members?.length || 0} members • {
-            new Date(channel.createdAt).toLocaleDateString()
-          }
+        <Text style={styles.channelDescription} numberOfLines={1}>
+          {channel.description}
         </Text>
       )}
     </View>
@@ -271,6 +269,7 @@ const HomeScreen = ({ route, navigation }) => {
         </View>
 
         <ScrollView style={styles.channelList}>
+          {/* Channel List */}
           {renderChannels()}
         </ScrollView>
 
@@ -399,10 +398,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
   },
-  channelMeta: {
+  channelDescription: {
     color: '#8e9297',
     fontSize: 12,
     marginTop: 2,
+    maxWidth: '90%',
   },
   unreadBadge: {
     backgroundColor: '#f04747',
