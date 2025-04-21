@@ -1,32 +1,77 @@
-import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Image } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
-import { useNavigation } from '@react-navigation/native';
+import { notificationService } from '../services/notification.service';
 
 const BottomNavBar = ({ activeTab, onTabPress }) => {
   const user = useSelector((state) => state.user);
   const navigation = useNavigation();
+  const route = useRoute();
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [localActiveTab, setLocalActiveTab] = useState(activeTab || 'home');
 
-  const getInitials = (name) => {
-    if (!name) return '?';
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
+  // Update local state when prop changes
+  useEffect(() => {
+    if (activeTab) {
+      setLocalActiveTab(activeTab);
+    }
+  }, [activeTab]);
 
-  const handleSettingsPress = () => {
-    navigation.navigate('Settings');
-  };
+  // Reset to home tab when on HomeScreen
+  useEffect(() => {
+    if (route.name === 'HomeScreen') {
+      setLocalActiveTab('home');
+      if (onTabPress && localActiveTab !== 'home') {
+        onTabPress('home');
+      }
+    }
+  }, [route.name]);
 
-  const handleChatbotPress = () => {
-    navigation.navigate('Chatbot');
-  };
+  // Get notification count when component mounts
+  useEffect(() => {
+    if (user?._id) {
+      // Initialize with local count
+      setNotificationCount(notificationService.getBadgeCount());
+
+      // Set up polling for notification count
+      const intervalId = setInterval(() => {
+        // Get current notification count
+        setNotificationCount(notificationService.getBadgeCount());
+      }, 5000); // Check every 5 seconds
+      
+      return () => clearInterval(intervalId);
+    }
+  }, [user?._id]);
 
   const handleTabPress = (id) => {
-    if (id === 'settings') {
-        handleSettingsPress();
-    } else {
-        onTabPress(id);
+    // Update local state
+    setLocalActiveTab(id);
+    
+    // First, update the active tab state through the parent callback
+    if (onTabPress) {
+      onTabPress(id);
+    }
+    
+    // Then handle navigation based on tab ID
+    switch (id) {
+      case 'home':
+        navigation.navigate('HomeScreen');
+        break;
+      case 'notifications':
+        // Navigate directly to Notifications_Screen
+        navigation.navigate('Notifications_Screen');
+        // Reset notification count
+        notificationService.resetBadgeCount();
+        setNotificationCount(0);
+        break;
+      case 'settings':
+        navigation.navigate('Settings');
+        break;
+      default:
+        console.log(`Tab ${id} pressed`);
     }
   };
 
@@ -34,82 +79,86 @@ const BottomNavBar = ({ activeTab, onTabPress }) => {
     { 
       id: 'home', 
       icon: 'home',
-      label: 'Home',
-      gradient: ['#7289DA', '#5865F2']
+      label: 'Home'
     },
     { 
       id: 'notifications', 
       icon: 'notifications',
       label: 'Notifications',
-      gradient: ['#5865F2', '#4752C4'],
-      badge: 3 // Example badge count
+      badge: notificationCount
     },
     { 
       id: 'settings',
       icon: 'settings',
-      label: 'Settings',
-      gradient: ['#4752C4', '#3C45A5']
+      label: 'Settings'
     }
   ];
 
   const renderTabContent = (tab) => {
     return (
-      <>
+      <View style={styles.tabContent}>
         <MaterialIcons
           name={tab.icon}
-          size={24}
-          color="#FFFFFF"
+          size={22}
+          color={localActiveTab === tab.id ? "#FFFFFF" : "#8e9297"}
         />
-        {tab.badge && (
+        <Text style={[
+          styles.tabLabel,
+          localActiveTab === tab.id && styles.activeTabLabel
+        ]}>
+          {tab.label}
+        </Text>
+        
+        {tab.badge > 0 && (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{tab.badge}</Text>
+            <Text style={styles.badgeText}>
+              {tab.badge > 99 ? '99+' : tab.badge}
+            </Text>
           </View>
         )}
-      </>
+      </View>
     );
+  };
+
+  const handleChatbotPress = () => {
+    navigation.navigate('Chatbot');
   };
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['rgba(47, 49, 54, 0.98)', 'rgba(32, 34, 37, 0.99)']}
+        colors={['#2F3136', '#202225']}
         style={styles.navContainer}
       >
         <View style={styles.innerContainer}>
           {tabs.map((tab) => (
             <TouchableOpacity
               key={tab.id}
-              onPress={() => handleTabPress(tab.id)}
               style={[
                 styles.tabButton,
-                activeTab === tab.id && styles.activeTab
+                localActiveTab === tab.id && styles.activeTab
               ]}
+              onPress={() => handleTabPress(tab.id)}
             >
-              <View style={styles.tabContent}>
-                {renderTabContent(tab)}
-              </View>
+              {renderTabContent(tab)}
             </TouchableOpacity>
           ))}
         </View>
       </LinearGradient>
       
-      {/* Redesigned AI Button */}
+      {/* AI Button */}
       <TouchableOpacity
         style={styles.aiButton}
         onPress={handleChatbotPress}
       >
         <LinearGradient
-          colors={['#9747FF', '#6C22E5']}
+          colors={['#8a2be2', '#6c22e5']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.aiButtonGradient}
         >
           <View style={styles.aiButtonInner}>
-            <View style={styles.aiButtonRipple}>
-              <View style={styles.aiButtonCore}>
-                <MaterialIcons name="smart-toy" size={24} color="#FFFFFF" />
-              </View>
-            </View>
+            <MaterialIcons name="smart-toy" size={24} color="#FFFFFF" />
           </View>
         </LinearGradient>
       </TouchableOpacity>
@@ -125,6 +174,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(47, 49, 54, 0.3)',
     paddingBottom: 8,
+    paddingTop: 8,
   },
   innerContainer: {
     flexDirection: 'row',
@@ -138,8 +188,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   tabContent: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 8,
     borderRadius: 8,
+    position: 'relative',
   },
   activeTab: {
     backgroundColor: 'rgba(114, 137, 218, 0.1)',
@@ -179,7 +233,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 2, // Added padding for the inner element
+    padding: 2,
   },
   aiButtonInner: {
     width: '100%',
@@ -189,23 +243,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  aiButtonRipple: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+  tabLabel: {
+    fontSize: 10,
+    color: '#8e9297',
+    marginTop: 4,
   },
-  aiButtonCore: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(108, 34, 229, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  activeTabLabel: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
 });
 

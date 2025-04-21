@@ -217,6 +217,7 @@ const HomeScreen = ({ route, navigation }) => {
   // Refresh data when the screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      setActiveTab('home');
       console.log('HomeScreen is in focus, refreshing data...');
       if (user?._id) {
         fetchData();
@@ -298,13 +299,13 @@ const HomeScreen = ({ route, navigation }) => {
     setActiveTab(tabId);
     switch (tabId) {
       case 'home':
-        // Already on home
+        // Already on home, do nothing or refresh
         break;
       case 'notifications':
-        Alert.alert('Coming Soon', 'Notifications feature is coming soon!');
+        navigation.navigate('Notifications_Screen');
         break;
-      case 'profile':
-        navigation.navigate('Profile');
+      case 'settings':
+        navigation.navigate('Settings');
         break;
     }
   };
