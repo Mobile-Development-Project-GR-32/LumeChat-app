@@ -30,6 +30,14 @@ const LoginScreen = () => {
     }).start();
   }, []);
 
+  const connectStreamUser = async (user, token) => {
+    try {
+      await streamClient.connectUser(user, token)
+    } catch (error) {
+      console.error('Login error:', error);
+    }
+  }
+
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please enter both email and password");
@@ -42,7 +50,7 @@ const LoginScreen = () => {
       const streamUser = { id: userData._id }
       console.log('Login successful:', userData);
       dispatch({ type: 'SET_USER', payload: userData });
-      streamClient.connectUser(streamUser, userData.token)
+      connectStreamUser(streamUser, userData.token);
       navigation.replace("HomeScreen");
     } catch (error) {
       console.error('Login error:', error);

@@ -4,6 +4,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useSelector } from "react-redux";
 import { useState, useEffect } from "react";
 import { messageService } from "../services/message.service"
+import { useStreamVideoClient } from "@stream-io/video-react-native-sdk";
 
 const ChatMessage = ({messageData}) => {
     const user = useSelector((state) => state.user);
@@ -29,6 +30,7 @@ const ChatMessage = ({messageData}) => {
 const ChannelChatScreen = ({route, navigation}) => {
     const {channel} = route.params;
     const user = useSelector((state) => state.user);
+    const streamClient = useStreamVideoClient()
     const [messages, setMessages] = useState([])
     const [message, setMessage] = useState('')
     const [isLoading, setIsLoading] = useState(false)
@@ -68,6 +70,15 @@ const ChannelChatScreen = ({route, navigation}) => {
         }
     }
 
+    const startChannelMeeting = async () => {
+      const callId = 'channelMeet-'+channel.name+'-'+Math.floor(Math.random()*1000000).toString();
+      navigation.navigate('Call', {callId: callId})
+    }
+
+    const joinChannelMeeting = async () => {
+
+    }
+
     const renderMessageItem = ({ item }) => (
         <ChatMessage 
           messageData={item}
@@ -87,6 +98,12 @@ const ChannelChatScreen = ({route, navigation}) => {
                     <View style={styles.headerTitle}>
                         <Text style={styles.headerName}>{channel.name}</Text>
                     </View>
+                    <TouchableOpacity style={styles.backButton} onPress={startChannelMeeting}>
+                      <MaterialIcons name="videocam" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.backButton} onPress={joinChannelMeeting}>
+                      <MaterialIcons name="video-call" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
                 </View>
                     <FlatList
                         data={messages}

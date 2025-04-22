@@ -48,6 +48,7 @@ const DirectMessagesScreen = ({route, navigation}) => {
     const [messages, setMessages] = useState([])
     const [message, setMessage] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+    const streamClient = useStreamVideoClient()
 
     useEffect(() => {
         fetchMessages(user._id, userId);
@@ -84,6 +85,36 @@ const DirectMessagesScreen = ({route, navigation}) => {
         }
     }
 
+    const startVideoCall = async () => {
+      const type = 'default'
+      const callId = user._id +'-'+userId+'-vid-call'
+      const call = streamClient.call(type, callId)
+
+      await call.join({
+        create: true,
+        ring: true,
+        video: true,
+        data: {
+          members: [{user_id: user._id, role: 'host'}, {user_id: userId}],
+        }
+      })
+    }
+
+    const startAudioCall = async () => {
+      const type = 'default'
+      const callId = user._id +'-'+userId+'-audio-call'
+      const call = streamClient.call(type, callId)
+
+      await call.join({
+        create: true,
+        ring: true,
+        video: false,
+        data: {
+          members: [{user_id: user._id}, {user_id: userId}],
+        }
+      })
+    }
+
     const renderMessageItem = ({ item }) => (
         <ChatMessage 
           messageData={item}
@@ -108,10 +139,10 @@ const DirectMessagesScreen = ({route, navigation}) => {
                         <View style={styles.statusDot} />
                         <Text style={styles.statusText}>Online</Text>
                     </View>
-                    <TouchableOpacity style={styles.backButton}>
+                    <TouchableOpacity style={styles.backButton} onPress={startVideoCall}>
                         <MaterialIcons name="videocam" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.backButton}>
+                    <TouchableOpacity style={styles.backButton} onPress={startAudioCall}>
                         <MaterialIcons name="phone" size={24} color="#FFFFFF" />
                     </TouchableOpacity>
                 </View>

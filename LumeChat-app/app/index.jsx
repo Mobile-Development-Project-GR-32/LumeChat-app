@@ -26,6 +26,7 @@ import QRCodeScreen from "../screens/settings/QRCodeScreen";
 // Import chatbot screen
 import ChatbotScreen from "../screens/ChatbotScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";  // Add this import
+import CallScreen from "../screens/CallScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -165,6 +166,7 @@ const AppContent = () => {
         }}
       />
       <Stack.Screen name="Chatbot" component={ChatbotScreen} />
+      <Stack.Screen name="Call" component={CallScreen} />
     </Stack.Navigator>
   );
 };
