@@ -13,19 +13,27 @@ import SignUpScreen from "../screens/SignUpScreen";
 import HomeScreen from "../screens/HomeScreen";
 import SplashScreen from "../screens/SplashScreen";
 import ChannelChatScreen from '../screens/ChannelChatScreen';
-import DirectMessagesScreen from '../screens/DirectMessagesScreen'
+import DirectMessagesScreen from '../screens/DirectMessagesScreen';
 import CreateChannelScreen from "../screens/CreateChannelScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import SettingsScreen from "../screens/settings/SettingsScreen";
-import NotificationsScreen from "../screens/settings/NotificationsScreen";
+// Import main notifications screen
+import NotificationsScreen from "../screens/Notifications_Screen"; 
+// Remove the incorrect import for settings notification screen
 import PrivacyScreen from "../screens/settings/PrivacyScreen";
 import SecurityScreen from "../screens/settings/SecurityScreen";
 import ThemeScreen from "../screens/settings/ThemeScreen";
 import QRCodeScreen from "../screens/settings/QRCodeScreen";
-
-// Import chatbot screen
 import ChatbotScreen from "../screens/ChatbotScreen";
-import UserProfileScreen from "../screens/UserProfileScreen";  // Add this import
+import UserProfileScreen from "../screens/UserProfileScreen";
+import QRScannerScreen from "../screens/QRScannerScreen";
+import ChannelProfileScreen from "../screens/ChannelProfileScreen";
+import EditChannelScreen from "../screens/EditChannelScreen";
+import DiscoverChannelsScreen from "../screens/DiscoverChannelsScreen";
+import ChannelInviteScreen from "../screens/ChannelInviteScreen";
+import ChannelMembersScreen from "../screens/ChannelMembersScreen";
+import InviteAcceptScreen from "../screens/InviteAcceptScreen";
+import InviteFriendsScreen from "../screens/InviteFriendsScreen";
 import CallScreen from "../screens/CallScreen";
 
 const Stack = createNativeStackNavigator();
@@ -68,6 +76,33 @@ const AppContent = () => {
       />
       <Stack.Screen name="ChannelChat" component={ChannelChatScreen}/>
       <Stack.Screen name="DirectMessages" component={DirectMessagesScreen}/>
+      
+      <Stack.Screen 
+        name="ChannelProfile" 
+        component={ChannelProfileScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Channel Profile',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+
+      <Stack.Screen 
+        name="EditChannel" 
+        component={EditChannelScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Edit Channel',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+      
       <Stack.Screen 
         name="Profile" 
         component={ProfileScreen}
@@ -79,7 +114,7 @@ const AppContent = () => {
           },
           headerTintColor: '#fff',
         }}
-        initialParams={{ userId: null }} // Add initial params to avoid undefined
+        initialParams={{ userId: null }}
       />
       <Stack.Screen 
         name="UserProfile" 
@@ -93,6 +128,7 @@ const AppContent = () => {
           headerTintColor: '#fff',
         }}
       />
+      
       <Stack.Screen 
         name="Settings" 
         component={SettingsScreen}
@@ -105,21 +141,10 @@ const AppContent = () => {
           headerTintColor: '#fff',
         }}
       />
-      <Stack.Screen 
-        name="Notifications" 
-        component={NotificationsScreen}
-        options={{
-          headerShown: true,
-          headerTitle: 'Notifications',
-          headerStyle: {
-            backgroundColor: '#2f3136',
-          },
-          headerTintColor: '#fff',
-        }}
-      />
-      <Stack.Screen 
-        name="Privacy" 
-        component={PrivacyScreen}
+      
+      {/* Remove NotificationsSettings screen since the file doesn't exist */}
+      
+      <Stack.Screen name="Privacy" component={PrivacyScreen}
         options={{
           headerShown: true,
           headerTitle: 'Privacy & Safety',
@@ -129,9 +154,7 @@ const AppContent = () => {
           headerTintColor: '#fff',
         }}
       />
-      <Stack.Screen 
-        name="Security" 
-        component={SecurityScreen}
+      <Stack.Screen name="Security" component={SecurityScreen}
         options={{
           headerShown: true,
           headerTitle: 'Security',
@@ -141,9 +164,7 @@ const AppContent = () => {
           headerTintColor: '#fff',
         }}
       />
-      <Stack.Screen 
-        name="Theme" 
-        component={ThemeScreen}
+      <Stack.Screen name="Theme" component={ThemeScreen}
         options={{
           headerShown: true,
           headerTitle: 'Appearance',
@@ -153,9 +174,7 @@ const AppContent = () => {
           headerTintColor: '#fff',
         }}
       />
-      <Stack.Screen 
-        name="QRCode" 
-        component={QRCodeScreen}
+      <Stack.Screen name="QRCode" component={QRCodeScreen}
         options={{
           headerShown: true,
           headerTitle: 'QR Code',
@@ -166,12 +185,81 @@ const AppContent = () => {
         }}
       />
       <Stack.Screen name="Chatbot" component={ChatbotScreen} />
+      <Stack.Screen name="QRScanner" component={QRScannerScreen} />
+      
+      <Stack.Screen 
+        name="DiscoverChannels" 
+        component={DiscoverChannelsScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Discover Channels',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+      
+      <Stack.Screen 
+        name="ChannelInvite" 
+        component={ChannelInviteScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Invite to Channel',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+
+      <Stack.Screen 
+        name="InviteAccept" 
+        component={InviteAcceptScreen}
+        options={{
+          headerShown: false
+        }}
+      />
+
+      <Stack.Screen 
+        name="ChannelMembers" 
+        component={ChannelMembersScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Channel Members',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+
+      <Stack.Screen 
+        name="InviteFriends" 
+        component={InviteFriendsScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Add Friends to Channel',
+          headerStyle: {
+            backgroundColor: '#2f3136',
+          },
+          headerTintColor: '#fff',
+        }}
+      />
+
+      {/* Add notifications screen route */}
+      <Stack.Screen 
+        name="Notifications_Screen" 
+        component={NotificationsScreen}
+        options={{ headerShown: false }}
+      />
       <Stack.Screen name="Call" component={CallScreen} />
     </Stack.Navigator>
   );
 };
 
-const App = () => {
+// Export the AppContent as default
+export default function App() {
   const callClient = new StreamVideoClient({apiKey: process.env.GETSTREAM_API_KEY});
   return (
     <Provider store={Store}>
@@ -182,6 +270,4 @@ const App = () => {
       </PaperProvider>
     </Provider>
   );
-};
-
-export default App;
+}

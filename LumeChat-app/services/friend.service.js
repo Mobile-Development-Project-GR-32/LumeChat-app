@@ -3,44 +3,65 @@ import apiConfig from '../config/api.config';
 const API_URL = apiConfig.API_URL;
 
 export const friendService = {
-    getHeaders: (userId) => ({
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'user-id': userId
-    }),
+    getHeaders: (userId) => {
+        if (!userId) {
+            console.error('Missing userId in getHeaders');
+        }
+        return {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'user-id': userId
+        };
+    },
 
     // Get user profile with friendship status
-    getUserProfile: async (userId, targetUserId) => {
+    getUserProfileWithFriendshipStatus: async (userId, targetUserId) => {
         try {
-            console.log(`Fetching profile for targetUserId: ${targetUserId} by userId: ${userId}`);
-            
-            // Validate both IDs before making the request
-            if (!userId || !targetUserId) {
-                throw new Error(userId ? 'Target user ID is required' : 'User ID is required');
-            }
+            console.log(`Fetching profile with friendship status: userId=${userId}, targetId=${targetUserId}`);
             
             const response = await fetch(`${API_URL}/friends/profile/${targetUserId}`, {
+                method: 'GET',
                 headers: friendService.getHeaders(userId)
             });
 
-            // Get the response details for debugging
-            const responseData = await response.json();
-            console.log('Profile API response:', responseData);
-            
             if (!response.ok) {
-                throw new Error(responseData.error || 'Failed to fetch user profile');
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to fetch user profile');
             }
 
-            // Return a default structure if the response doesn't have expected fields
-            if (!responseData || !responseData.fullName) {
-                console.warn('API returned incomplete profile data:', responseData);
-                throw new Error('Incomplete profile data received');
+            const profile = await response.json();
+            console.log('Profile with friendship status:', profile);
+            
+            // Normalize friendship status - handle both 'friend' and 'friends'
+            let normalizedStatus = profile.friendshipStatus || 'none';
+            if (normalizedStatus === 'friend') {
+                normalizedStatus = 'friends';
             }
+            
+            // Just ensure the profile has consistent IDs and return it directly
+            return {
+                ...profile,
+                _id: profile._id || profile.id || targetUserId,
+                id: profile.id || profile._id || targetUserId,
+                // Normalize the friendshipStatus property
+                friendshipStatus: normalizedStatus,
+                // Set isFriend flag for compatibility with older code
+                isFriend: normalizedStatus === 'friends' || normalizedStatus === 'friend'
+            };
+        } catch (error) {
+            console.error('Get user profile with friendship error:', error);
+            throw error;
+        }
+    },
 
-            return responseData;
+    // Get user profile using the friendship status API
+    getUserProfile: async (userId, targetUserId) => {
+        try {
+            // Simply call the getUserProfileWithFriendshipStatus method to ensure consistent behavior
+            return await friendService.getUserProfileWithFriendshipStatus(userId, targetUserId);
         } catch (error) {
             console.error('User profile fetch error:', error);
-            throw error; // Throw the error instead of returning fallback data
+            throw error;
         }
     },
 
@@ -205,6 +226,50 @@ export const friendService = {
             console.error('User status fetch error:', error);
             // Return an empty object instead of throwing to avoid UI disruption
             return { onlineUsers: [], offlineUsers: [] };
+        }
+    },
+
+    // Add this new function to check friendship status
+    checkFriendshipStatus: async (userId, targetUserId) => {
+        try {
+            const response = await fetch(
+                `${API_URL}/friends/status?targetUserId=${targetUserId}`, 
+                {
+                    headers: friendService.getHeaders(userId)
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to check friendship status');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error checking friendship status:', error);
+            return { status: 'none' }; // Default to not friends if there's an error
+        }
+    },
+
+    // Add this function to check if two users are friends
+    getFriendshipStatus: async (userId, targetUserId) => {
+        try {
+            const response = await fetch(
+                `${API_URL}/friends/status/${targetUserId}`, 
+                {
+                    headers: friendService.getHeaders(userId)
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to check friendship status');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error checking friendship status:', error);
+            return { status: 'none' }; // Default to not friends if there's an error
         }
     },
 

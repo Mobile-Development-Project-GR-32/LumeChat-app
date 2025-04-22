@@ -26,21 +26,54 @@ const UserProfileScreen = ({ route, navigation }) => {
             
             // Validate both user IDs before proceeding
             if (!userId || !currentUser?._id) {
-                throw new Error('Missing user information. Please try again.');
+                console.error('Missing user information:', { 
+                    currentUserId: currentUser?._id, 
+                    targetUserId: userId 
+                });
+                Alert.alert(
+                    'Error', 
+                    'Could not load user profile. The user might not exist or the connection failed.',
+                    [
+                        { text: 'OK', onPress: () => navigation.goBack() }
+                    ]
+                );
+                return;
             }
             
-            console.log('Fetching user profile for userId:', userId, 'Current user:', currentUser._id);
+            console.log('Fetching profile for userId:', userId, 'as currentUser:', currentUser._id);
             
-            // Use currentUser._id as the requesting user and userId as the target user
             const profile = await friendService.getUserProfile(currentUser._id, userId);
-            console.log('Profile received:', profile);
             
             if (!profile || !profile._id) {
-                throw new Error('Invalid profile data received');
+                console.error('Invalid profile data received:', profile);
+                Alert.alert(
+                    'Error', 
+                    'Could not load user profile.',
+                    [
+                        { text: 'OK', onPress: () => navigation.goBack() }
+                    ]
+                );
+                return;
             }
             
+            console.log('Received profile data:', profile);
             setUserProfile(profile);
-            setRequestStatus(profile.friendshipStatus || 'none');
+            
+            // Fix for "friend" status - ensure it's correctly mapped to "friends"
+            let friendStatus = profile.friendshipStatus || 'none';
+            
+            // Map "friend" to "friends" if needed
+            if (friendStatus === 'friend') {
+                friendStatus = 'friends';
+            }
+            
+            // Also check if isFriend is true, then set as "friends"
+            if (profile.isFriend === true) {
+                friendStatus = 'friends';
+            }
+            
+            console.log('Setting friendship status:', friendStatus);
+            setRequestStatus(friendStatus);
         } catch (error) {
             console.error('Failed to load user profile:', error);
             Alert.alert(
@@ -87,16 +120,17 @@ const UserProfileScreen = ({ route, navigation }) => {
 
     const handleRemoveFriend = async () => {
         Alert.alert(
-            'Remove Friend',
-            `Are you sure you want to remove ${userProfile.fullName} from your friends?`,
+            'Unfriend',
+            `Are you sure you want to unfriend ${userProfile.fullName}?`,
             [
                 { text: 'Cancel', style: 'cancel' },
                 { 
-                    text: 'Remove', 
+                    text: 'Unfriend', 
                     style: 'destructive',
                     onPress: async () => {
                         try {
                             await friendService.removeFriend(currentUser._id, userId);
+                            // Update local state immediately after successful API call
                             setRequestStatus('none');
                             Alert.alert('Success', 'Friend removed successfully');
                         } catch (error) {
@@ -109,7 +143,7 @@ const UserProfileScreen = ({ route, navigation }) => {
     };
 
     const handleStartChat = () => {
-        navigation.navigate('ChatScreen', {
+        navigation.navigate('DirectMessages', {
             userId: userProfile._id,
             userName: userProfile.fullName,
             userAvatar: userProfile.profilePic
@@ -132,9 +166,11 @@ const UserProfileScreen = ({ route, navigation }) => {
         Alert.alert('Search', 'Media search feature coming soon!');
     };
 
-    // Update the UI based on friendship status
     const renderFriendshipButtons = () => {
-        if (requestStatus === 'friends') {
+        console.log("Rendering buttons for friendship status:", requestStatus);
+        
+        // Fix for case inconsistency - handle both "friend" and "friends"
+        if (requestStatus === 'friends' || requestStatus === 'friend') {
             return (
                 <>
                     <TouchableOpacity style={styles.messageButton} onPress={handleStartChat}>
@@ -214,8 +250,13 @@ const UserProfileScreen = ({ route, navigation }) => {
 
     return (
         <View style={styles.container}>
-            {/* Profile Header */}
-            <View style={styles.profileHeader}>
+            {/* Profile Header with curved bottom edge and gradient */}
+            <LinearGradient
+                colors={['#5865F2', '#4752C4']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.profileHeader}
+            >
                 <View style={styles.profileImageSection}>
                     <Image 
                         source={userProfile.profilePic ? 
@@ -226,39 +267,53 @@ const UserProfileScreen = ({ route, navigation }) => {
                     />
                     <View style={styles.userInfoContainer}>
                         <Text style={styles.userName}>{userProfile.fullName}</Text>
-                        <Text style={styles.userStatus}>{userProfile.status || "Available"}</Text>
+                        <View style={styles.statusBadge}>
+                            <View style={styles.statusDot} />
+                            <Text style={styles.userStatus}>{userProfile.status || "Available"}</Text>
+                        </View>
                     </View>
                 </View>
-            </View>
+                <View style={styles.headerCurve} />
+            </LinearGradient>
             
-            {/* Action Buttons */}
-            <View style={styles.actionButtonsContainer}>
-                <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
-                    <MaterialIcons name="call" size={24} color="#7289DA" />
-                    <Text style={styles.actionLabel}>Call</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.actionButton} onPress={handleVideoCall}>
-                    <MaterialIcons name="videocam" size={24} color="#7289DA" />
-                    <Text style={styles.actionLabel}>Video</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.actionButton} onPress={handleToggleNotifications}>
-                    <MaterialIcons name="notifications" size={24} color="#7289DA" />
-                    <Text style={styles.actionLabel}>Mute</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.actionButton} onPress={handleMediaSearch}>
-                    <MaterialIcons name="search" size={24} color="#7289DA" />
-                    <Text style={styles.actionLabel}>Search</Text>
-                </TouchableOpacity>
+            {/* Action Buttons in a card */}
+            <View style={styles.actionCard}>
+                <View style={styles.actionButtonsContainer}>
+                    <TouchableOpacity style={styles.actionButton} onPress={handleCall}>
+                        <View style={styles.actionButtonCircle}>
+                            <MaterialIcons name="call" size={22} color="#7289DA" />
+                        </View>
+                        <Text style={styles.actionLabel}>Call</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={styles.actionButton} onPress={handleVideoCall}>
+                        <View style={styles.actionButtonCircle}>
+                            <MaterialIcons name="videocam" size={22} color="#7289DA" />
+                        </View>
+                        <Text style={styles.actionLabel}>Video</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={styles.actionButton} onPress={handleToggleNotifications}>
+                        <View style={styles.actionButtonCircle}>
+                            <MaterialIcons name="notifications" size={22} color="#7289DA" />
+                        </View>
+                        <Text style={styles.actionLabel}>Mute</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity style={styles.actionButton} onPress={handleMediaSearch}>
+                        <View style={styles.actionButtonCircle}>
+                            <MaterialIcons name="search" size={22} color="#7289DA" />
+                        </View>
+                        <Text style={styles.actionLabel}>Search</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {/* User info list */}
             <ScrollView style={styles.infoContainer}>
                 <View style={styles.infoSection}>
                     {userProfile.username && (
-                        <View style={styles.infoItem}>
+                        <View style={styles.infoCard}>
                             <MaterialIcons name="alternate-email" size={24} color="#7289DA" />
                             <View style={styles.infoTextContainer}>
                                 <Text style={styles.infoLabel}>Username</Text>
@@ -268,7 +323,7 @@ const UserProfileScreen = ({ route, navigation }) => {
                     )}
                     
                     {userProfile.phoneNumber && (
-                        <View style={styles.infoItem}>
+                        <View style={styles.infoCard}>
                             <MaterialIcons name="phone" size={24} color="#7289DA" />
                             <View style={styles.infoTextContainer}>
                                 <Text style={styles.infoLabel}>Phone</Text>
@@ -278,7 +333,7 @@ const UserProfileScreen = ({ route, navigation }) => {
                     )}
                     
                     {userProfile.email && (
-                        <View style={styles.infoItem}>
+                        <View style={styles.infoCard}>
                             <MaterialIcons name="email" size={24} color="#7289DA" />
                             <View style={styles.infoTextContainer}>
                                 <Text style={styles.infoLabel}>Email</Text>
@@ -288,14 +343,17 @@ const UserProfileScreen = ({ route, navigation }) => {
                     )}
                     
                     {userProfile.bio && (
-                        <View style={styles.bioContainer}>
-                            <Text style={styles.aboutTitle}>About</Text>
+                        <View style={styles.bioCard}>
+                            <View style={styles.bioHeader}>
+                                <MaterialIcons name="info" size={24} color="#7289DA" />
+                                <Text style={styles.aboutTitle}>About</Text>
+                            </View>
                             <Text style={styles.bioText}>{userProfile.bio}</Text>
                         </View>
                     )}
                     
                     {userProfile.createdAt && (
-                        <View style={styles.infoItem}>
+                        <View style={styles.infoCard}>
                             <MaterialIcons name="event" size={24} color="#7289DA" />
                             <View style={styles.infoTextContainer}>
                                 <Text style={styles.infoLabel}>Joined</Text>
@@ -356,66 +414,111 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     profileHeader: {
-        backgroundColor: '#7289DA',
         padding: 20,
         paddingTop: 60,
-        paddingBottom: 30,
+        paddingBottom: 40,
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30,
+        position: 'relative',
+    },
+    headerCurve: {
+        position: 'absolute',
+        bottom: -1,
+        left: 0,
+        right: 0,
+        height: 20,
+        backgroundColor: '#36393F',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
     },
     profileImageSection: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     profileImage: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        borderWidth: 3,
-        borderColor: '#FFFFFF',
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        borderWidth: 4,
+        borderColor: 'rgba(255, 255, 255, 0.6)',
     },
     userInfoContainer: {
         flex: 1,
         marginLeft: 20,
     },
     userName: {
-        fontSize: 22,
+        fontSize: 24,
         fontWeight: 'bold',
         color: '#FFFFFF',
+        marginBottom: 6,
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.2)',
+        paddingVertical: 4,
+        paddingHorizontal: 10,
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+    },
+    statusDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#43B581', // Green for "online"
+        marginRight: 6,
     },
     userStatus: {
         fontSize: 14,
-        color: 'rgba(255, 255, 255, 0.8)',
-        marginTop: 4,
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
+    actionCard: {
+        marginTop: -10,
+        marginHorizontal: 20,
+        backgroundColor: '#2F3136',
+        borderRadius: 16,
+        padding: 16,
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
     },
     actionButtonsContainer: {
         flexDirection: 'row',
         justifyContent: 'space-around',
-        backgroundColor: '#2F3136',
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#202225',
     },
     actionButton: {
         alignItems: 'center',
-        width: 70,
+        width: 65,
+    },
+    actionButtonCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(114, 137, 218, 0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 6,
     },
     actionLabel: {
-        marginTop: 4,
         color: '#DCDDDE',
         fontSize: 12,
     },
     infoContainer: {
         flex: 1,
+        marginTop: 20,
     },
     infoSection: {
         padding: 16,
-        backgroundColor: '#36393F',
     },
-    infoItem: {
+    infoCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#2F3136',
+        backgroundColor: '#2F3136',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 12,
     },
     infoTextContainer: {
         flex: 1,
@@ -423,23 +526,29 @@ const styles = StyleSheet.create({
     },
     infoLabel: {
         color: '#8e9297',
-        fontSize: 14,
+        fontSize: 13,
+        marginBottom: 4,
     },
     infoText: {
         color: '#DCDDDE',
         fontSize: 16,
-        marginTop: 2,
     },
-    bioContainer: {
-        paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#2F3136',
+    bioCard: {
+        backgroundColor: '#2F3136',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 12,
+    },
+    bioHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
     },
     aboutTitle: {
         color: '#7289DA',
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
-        marginBottom: 8,
+        marginLeft: 8,
     },
     bioText: {
         color: '#DCDDDE',
@@ -448,7 +557,7 @@ const styles = StyleSheet.create({
     },
     friendActionContainer: {
         padding: 16,
-        backgroundColor: '#2F3136',
+        marginBottom: 20,
     },
     messageButton: {
         flexDirection: 'row',
@@ -456,8 +565,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: '#7289DA',
         padding: 16,
-        borderRadius: 8,
+        borderRadius: 12,
         marginBottom: 12,
+        elevation: 2,
     },
     removeButton: {
         flexDirection: 'row',
@@ -465,7 +575,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: '#F04747',
         padding: 16,
-        borderRadius: 8,
+        borderRadius: 12,
+        elevation: 2,
     },
     addFriendButton: {
         flexDirection: 'row',
@@ -473,7 +584,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: '#7289DA',
         padding: 16,
-        borderRadius: 8,
+        borderRadius: 12,
+        elevation: 2,
     },
     buttonText: {
         color: '#FFFFFF',
@@ -487,7 +599,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         backgroundColor: '#36393F',
         paddingVertical: 16,
-        borderRadius: 8,
+        borderRadius: 12,
         borderWidth: 1,
         borderColor: '#202225',
     },
@@ -505,8 +617,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         padding: 16,
-        borderRadius: 8,
+        borderRadius: 12,
         flex: 0.48,
+        elevation: 2,
     },
     acceptButton: {
         backgroundColor: '#43B581',

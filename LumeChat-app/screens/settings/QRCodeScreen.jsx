@@ -33,8 +33,21 @@ const QRCodeScreen = () => {
     const loadQRCode = async () => {
         try {
             setIsLoading(true);
-            const data = await profileService.getProfileQR(user._id);
-            setQrData(data.qrCode);
+            
+            // Ensure we generate QR code with consistent userId format that our scanner can read
+            const qrData = {
+                userId: user._id,
+                username: user.username,
+                timestamp: new Date().toISOString()
+            };
+            
+            const jsonData = JSON.stringify(qrData);
+            
+            // Get QR code from API
+            const response = await profileService.getProfileQR(user._id);
+            
+            // The API endpoint should generate a QR code with the correct data format
+            setQrData(response.qrCode);
         } catch (error) {
             console.error('Failed to load QR code:', error);
             Alert.alert('Error', 'Failed to load QR code');
