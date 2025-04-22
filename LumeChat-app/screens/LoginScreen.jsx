@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { authService } from '../services/auth.service';
 import { useDispatch } from 'react-redux';
 import { useStreamVideoClient } from "@stream-io/video-react-native-sdk";
+import apiConfig from "@/config/api.config";
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");
@@ -30,11 +31,20 @@ const LoginScreen = () => {
     }).start();
   }, []);
 
-  const connectStreamUser = async (user, token) => {
+  const connectStreamUser = async (userData) => {
     try {
-      await streamClient.connectUser(user, token)
-    } catch (error) {
-      console.error('Login error:', error);
+      const response = await fetch(`${apiConfig.API_URL}/profile/get-token`, {headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        userId: userData._id
+      }})
+  
+      const token = await response.json()
+
+      streamClient.connectUser({id: userData._id}, token)
+    } catch(error) {
+      console.error('Failed to connect to Stream:', error);
+      throw error;
     }
   }
 
@@ -47,10 +57,9 @@ const LoginScreen = () => {
     setIsLoading(true);
     try {
       const userData = await authService.signIn(email, password);
-      const streamUser = { id: userData._id }
       console.log('Login successful:', userData);
       dispatch({ type: 'SET_USER', payload: userData });
-      connectStreamUser(streamUser, userData.token);
+      connectStreamUser(userData)
       navigation.replace("HomeScreen");
     } catch (error) {
       console.error('Login error:', error);

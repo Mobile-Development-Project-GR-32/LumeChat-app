@@ -49,6 +49,14 @@
         {
           "cameraPermission": "Allow LumeChat to access your camera to scan QR codes."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 24
+          }
+        }
       ]
     ],
     "experiments": {

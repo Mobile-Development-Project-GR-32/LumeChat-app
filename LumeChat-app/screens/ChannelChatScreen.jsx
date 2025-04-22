@@ -10,6 +10,7 @@ import { useSelector } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
 import { messageService } from '../services/message.service';
 import { channelService } from '../services/channel.service';
+import { useStreamVideoClient } from '@stream-io/video-react-native-sdk';
 
 // Helper function to format dates
 const formatDate = (date) => {
@@ -543,6 +544,15 @@ const ChannelChatScreen = ({ route, navigation }) => {
     </View>
   );
 
+  const startChannelMeeting = async () => {
+    const callId = 'call-'+channel.name+'-'+Math.floor(Math.random() * 1000000).toString()
+    navigation.navigate('Call', {callId: callId})
+  }
+
+  const joinChannelMeeting = async () => {
+    
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
@@ -570,6 +580,18 @@ const ChannelChatScreen = ({ route, navigation }) => {
         </TouchableOpacity>
         
         <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => startChannelMeeting()}
+          >
+            <MaterialIcons name="video-chat" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => joinChannelMeeting()}
+          >
+            <MaterialIcons name="video-call" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
           <TouchableOpacity 
             style={styles.headerButton}
             onPress={() => toggleMembersList()}
@@ -612,12 +634,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
           <TouchableOpacity onPress={() => toggleMembersList()}>
             <MaterialIcons name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-                    <TouchableOpacity style={styles.backButton} onPress={startChannelMeeting}>
-                      <MaterialIcons name="videocam" size={24} color="#FFFFFF" />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.backButton} onPress={joinChannelMeeting}>
-                      <MaterialIcons name="video-call" size={24} color="#FFFFFF" />
-                    </TouchableOpacity>
         </View>
         
         <FlatList

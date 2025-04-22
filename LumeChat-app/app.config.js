@@ -55,8 +55,8 @@ export default {
       [
         "@config-plugins/react-native-webrtc",
         {
-          "cameraPermission": "$(PRODUCT_NAME) requires camera access in order to capture and transmit video",
-          "microphonePermission": "$(PRODUCT_NAME) requires microphone access in order to capture and transmit audio"
+          "cameraPermission": "LumeChat requires camera access in order to capture and transmit video",
+          "microphonePermission": "LumeChat requires microphone access in order to capture and transmit audio"
         }
       ]
     ],

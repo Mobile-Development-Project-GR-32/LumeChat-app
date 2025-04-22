@@ -3,7 +3,7 @@ import {
   View, StyleSheet, TouchableOpacity, Text, Alert, 
   ActivityIndicator, StatusBar 
 } from 'react-native';
-import { Camera } from 'expo-camera';  // Use Camera instead of BarCodeScanner
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -13,14 +13,15 @@ const QRScannerScreen = () => {
   const navigation = useNavigation();
   const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions()
   const user = useSelector(state => state.user);
   
   useEffect(() => {
     const getCameraPermissions = async () => {
       try {
         // Use Camera permission request instead of BarCodeScanner
-        const { status } = await Camera.requestCameraPermissionsAsync();
-        setHasPermission(status === 'granted');
+        const { status } = await requestPermission()
+        setHasPermission(status)
       } catch (error) {
         console.error("Error requesting camera permission:", error);
         setHasPermission(false);
@@ -124,7 +125,7 @@ const QRScannerScreen = () => {
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
       {/* Use Camera component instead of BarCodeScanner */}
-      <Camera
+      <CameraView
         style={StyleSheet.absoluteFillObject}
         onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
         barCodeScannerSettings={{
@@ -154,7 +155,7 @@ const QRScannerScreen = () => {
             <MaterialIcons name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
-      </Camera>
+      </CameraView>
       
       {scanned && (
         <TouchableOpacity 
