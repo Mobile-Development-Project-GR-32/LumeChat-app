@@ -45,7 +45,7 @@ const formatTime = (date) => {
 const ChannelChatScreen = ({ route, navigation }) => {
   const { channel } = route.params;
   const currentUser = useSelector(state => state.user);
-  const streamClient = useStreamVideoClient()
+  const videoClient = useStreamVideoClient()
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -545,8 +545,8 @@ const ChannelChatScreen = ({ route, navigation }) => {
   );
 
   const startChannelMeeting = async () => {
-    const callId = 'call-'+channel.name+'-'+Math.floor(Math.random() * 1000000).toString()
-    navigation.navigate('Call', {callId: callId})
+    const callId = 'channel-call-'+channel.name+'-'+Math.floor(Math.random() * 1000000).toString()
+    navigation.navigate('ChannelMeeting', {callId: callId, channelName: channel.name})
   }
 
   const joinChannelMeeting = async () => {

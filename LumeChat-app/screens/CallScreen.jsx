@@ -1,39 +1,50 @@
+import { useNavigation, useRoute } from "@react-navigation/core";
 import { CallContent, CallingState, IncomingCall, OutgoingCall, StreamCall, useCall, useCalls, useCallStateHooks, useStreamVideoClient } from "@stream-io/video-react-native-sdk";
 import { useEffect, useState } from "react";
+import { View } from "react-native";
 
-const CallScreen = (route) => {
+const CallScreen = () => {
     const [call, setCall] = useState(null);
     const client = useStreamVideoClient();
-    const {callId} = route.params;
+    const route = useRoute()
+    const navigation = useNavigation()
+    const { callId } = route.params;
 
     useEffect(() => {
         if (!client || call) return;
-
+        const call = client.call('default', callId).create();
         const joinCall = async () => {
-            const call = client.call('default', callId);
-            await call.join({
-                create: true
-            })
-            setCall(call)
+            await call.join()
+            .then(
+                () => setCall(call),
+                () => console.error('Failed to join call')
+            )
+            
         };
         joinCall();
-    }, [client])
+    }, [client, callId])
+
+    const returnToPreviousScreen = () => {
+        navigation.goBack()
+    }
 
     if (!call) return null;
 
     return (
-        <StreamCall call={call}>
-            <CallPanel/>
-        </StreamCall>
+        <View style={{ flex: 1}}>
+            <StreamCall call={call}>
+                <CallPanel/>
+            </StreamCall>
+        </View>
     )
 }
 
 const CallPanel = () => {
     const call = useCall();
     const isCallCreatedByMe = call?.data?.created_by.id === call?.currentUserId;
-    const { useCallingState } = useCallStateHooks();
+    const {useCallCallingState} = useCallStateHooks();
 
-    const callingState = useCallingState()
+    const callingState = useCallCallingState()
 
     switch (callingState) {
         case CallingState.RINGING:
@@ -42,6 +53,8 @@ const CallPanel = () => {
             ) : (
                 <IncomingCall/>
             );
+        case CallingState.JOINED:
+            return <CallContent/>
         default:
             return <CallContent/>
     }

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Provider } from "react-redux";
+import { Provider, useSelector } from "react-redux";
 import Store from "../context/store";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { Provider as PaperProvider } from 'react-native-paper';
-import { StreamVideo, StreamVideoClient, useStreamVideoClient } from '@stream-io/video-react-native-sdk'
-import GETSTREAM_API_KEY from '../config/api.config'
-import VideoWrapper from '../components/VideoWrapper'
+import { StreamVideo, StreamVideoClient } from '@stream-io/video-react-native-sdk'
+import {GETSTREAM_API_KEY, API_URL} from '../config/api.config'
+import { VideoWrapper } from "../components/VideoWrapper";
 
 // Import your screen components
 import LoginScreen from "../screens/LoginScreen";
@@ -37,11 +37,15 @@ import ChannelMembersScreen from "../screens/ChannelMembersScreen";
 import InviteAcceptScreen from "../screens/InviteAcceptScreen";
 import InviteFriendsScreen from "../screens/InviteFriendsScreen";
 import CallScreen from "../screens/CallScreen";
+import MeetingScreen from "../screens/MeetingScreen"
+import Calls from '../screens/Calls'
 
 const Stack = createNativeStackNavigator();
 
 const AppContent = () => {
   const dispatch = useDispatch();
+  const user = useSelector(state => state.user)
+  const videoClient = new StreamVideoClient('aa6m2gy6sx9c')
 
   useEffect(() => {
     const loadUser = async () => {
@@ -58,8 +62,8 @@ const AppContent = () => {
     loadUser();
   }, []);
 
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+  const appContent = (
+      <>
       <Stack.Screen name="LoginScreen" component={LoginScreen} />
       <Stack.Screen name="SignUpScreen" component={SignUpScreen} />
       <Stack.Screen name="HomeScreen" component={HomeScreen} />   
@@ -256,7 +260,17 @@ const AppContent = () => {
         options={{ headerShown: false }}
       />
       <Stack.Screen name="Call" component={CallScreen} />
-    </Stack.Navigator>
+      <Stack.Screen name="ChannelMeeting" component={MeetingScreen} />
+      </>
+  )
+
+  return (
+    <StreamVideo client={videoClient}>
+      <Stack.Navigator screenOptions={{headerShown: false}}>
+        {appContent}
+      </Stack.Navigator>
+      <Calls/>
+    </StreamVideo>
   );
 };
 

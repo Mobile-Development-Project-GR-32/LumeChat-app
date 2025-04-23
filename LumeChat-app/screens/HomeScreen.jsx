@@ -10,6 +10,8 @@ import SideDrawer from '../components/SideDrawer';
 import SearchScreen from './SearchScreen';
 import { LinearGradient } from 'expo-linear-gradient';
 import { userStatusManager } from '../utils/userStatusManager';
+import { useStreamVideoClient } from '@stream-io/video-react-native-sdk';
+import apiConfig from '@/config/api.config';
 
 // Conversation Item component for direct messages and channels
 const ConversationItem = ({ conversation, navigation }) => (
@@ -169,6 +171,7 @@ const HomeScreen = ({ route, navigation }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const DRAWER_WIDTH = 250;
+  const videoClient = useStreamVideoClient()
 
   const mockContacts = [
     { name: 'John Doe', isOnline: true, color: '#7289da' },
@@ -287,6 +290,23 @@ const HomeScreen = ({ route, navigation }) => {
       }
     };
   }, [user?._id]);
+
+  useEffect(() => {
+    if(user?._id) {
+      try {
+        const tokenProvider = () => fetch(`${apiConfig.API_URL}/profile/get-token`,{headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'userId': user._id
+        }}).then(response => response.json())
+        videoClient.connectUser({id: user._id, name: user.username, image: user.profilePic}, tokenProvider)
+      } catch (error) {
+        console.error('Failed to connect user to stream:', error)
+      }
+    }
+
+    return () => videoClient.disconnectUser()
+  })
 
   const getProfileImage = () => {
     if (user?.profilePic) {
