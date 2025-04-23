@@ -10,6 +10,9 @@ import { firebaseAuth, firestoreDB } from '../config/firebase.config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { profileService } from './profile.service';
 import { avatars } from '../utils/supports';
+import apiConfig from '@/config/api.config';
+
+const API_URL = apiConfig.API_URL
 
 export const authService = {
   // Check username availability
@@ -50,23 +53,6 @@ export const authService = {
       };
 
       console.log('Storing user data:', userData);
-
-      await fetch(`${API_URL}/profile/register-stream`, {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: userData._id,
-          fullName: fullName
-        })
-      }).then((response) => response.json())
-        .then((json) => console.log('Sent user info to GetStream servers:', json))
-        .catch((error) => {
-          console.log('Signup error:', error)
-          throw new Error(error.message)
-        })
 
       // Store in AsyncStorage for later verification
       await AsyncStorage.setItem('pendingUserData', JSON.stringify(userData));

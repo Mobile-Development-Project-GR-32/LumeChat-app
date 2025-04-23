@@ -9,7 +9,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { authService } from '../services/auth.service';
 import { useDispatch } from 'react-redux';
 import { useStreamVideoClient } from "@stream-io/video-react-native-sdk";
-import apiConfig from "@/config/api.config";
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");
@@ -18,7 +17,6 @@ const LoginScreen = () => {
   const [showPassword, setShowPassword] = useState(false); // Added state for password visibility
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const streamClient = useStreamVideoClient();
 
   // Add Animated value for logo
   const [logoAnim] = useState(new Animated.Value(0));
@@ -31,23 +29,6 @@ const LoginScreen = () => {
     }).start();
   }, []);
 
-  const connectStreamUser = async (userData) => {
-    try {
-      const response = await fetch(`${apiConfig.API_URL}/profile/get-token`, {headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        userId: userData._id
-      }})
-  
-      const token = await response.json()
-
-      streamClient.connectUser({id: userData._id}, token)
-    } catch(error) {
-      console.error('Failed to connect to Stream:', error);
-      throw error;
-    }
-  }
-
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Please enter both email and password");
@@ -59,7 +40,6 @@ const LoginScreen = () => {
       const userData = await authService.signIn(email, password);
       console.log('Login successful:', userData);
       dispatch({ type: 'SET_USER', payload: userData });
-      connectStreamUser(userData)
       navigation.replace("HomeScreen");
     } catch (error) {
       console.error('Login error:', error);

@@ -7,6 +7,7 @@ import { useDispatch } from 'react-redux';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { StreamVideo, StreamVideoClient, useStreamVideoClient } from '@stream-io/video-react-native-sdk'
 import GETSTREAM_API_KEY from '../config/api.config'
+import VideoWrapper from '../components/VideoWrapper'
 
 // Import your screen components
 import LoginScreen from "../screens/LoginScreen";
@@ -39,7 +40,7 @@ import CallScreen from "../screens/CallScreen";
 
 const Stack = createNativeStackNavigator();
 
-const AppContent = (client) => {
+const AppContent = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -261,20 +262,10 @@ const AppContent = (client) => {
 
 // Export the AppContent as default
 export default App = () => {
-  const [client, setClient] = useState(null);
-
-  useEffect(() => {
-    if(client) return;
-    const newClient = new StreamVideoClient(GETSTREAM_API_KEY)
-    setClient(newClient)
-  })
-
   return (
     <Provider store={Store}>
         <PaperProvider>
-          <StreamVideo client={client}>
             <AppContent />
-            </StreamVideo>
         </PaperProvider>
     </Provider>
   );
