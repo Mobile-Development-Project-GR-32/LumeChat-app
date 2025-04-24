@@ -16,9 +16,7 @@ import DirectMessagesScreen from '../screens/DirectMessagesScreen';
 import CreateChannelScreen from "../screens/CreateChannelScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import SettingsScreen from "../screens/settings/SettingsScreen";
-// Import main notifications screen
 import NotificationsScreen from "../screens/Notifications_Screen"; 
-// Remove the incorrect import for settings notification screen
 import PrivacyScreen from "../screens/settings/PrivacyScreen";
 import SecurityScreen from "../screens/settings/SecurityScreen";
 import ThemeScreen from "../screens/settings/ThemeScreen";

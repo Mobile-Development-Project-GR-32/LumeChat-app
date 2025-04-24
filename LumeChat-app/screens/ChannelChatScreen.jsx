@@ -72,7 +72,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     const channelId = getChannelId();
-    console.log('Using channelId:', channelId);
     
     if (channelId) {
       loadMessages(channelId);
@@ -106,9 +105,7 @@ const ChannelChatScreen = ({ route, navigation }) => {
   }, [isMembersVisible]);
   
   const loadChannelMembers = async (channelId) => {
-    try {
-      console.log('Loading channel members for:', channelId);
-      
+    try {   
       // Add validation to check if channelId is valid
       if (!channelId) {
         console.error('Invalid channel ID');
@@ -162,25 +159,17 @@ const ChannelChatScreen = ({ route, navigation }) => {
       }
       
       try {
-        console.log('Loading messages for channel:', channelId);
         const messageData = await messageService.getChannelMessages(
           currentUser._id,
           channelId,
           50
         );
         
-        // Detailed console logging to diagnose the issue
-        console.log('Raw message data type:', typeof messageData);
-        console.log('Message data keys:', messageData ? Object.keys(messageData) : 'null');
-        console.log('Messages array exists:', messageData && messageData.messages ? `Yes (${messageData.messages.length} items)` : 'No');
-        
         // Try to extract messages in various ways
         let messagesToProcess = [];
         if (messageData && Array.isArray(messageData)) {
-          console.log('Message data is an array with', messageData.length, 'items');
           messagesToProcess = messageData;
         } else if (messageData && messageData.messages && Array.isArray(messageData.messages)) {
-          console.log('Message data has messages array with', messageData.messages.length, 'items');
           messagesToProcess = messageData.messages;
         } else {
           console.error('Could not extract messages from response:', messageData);
@@ -191,10 +180,8 @@ const ChannelChatScreen = ({ route, navigation }) => {
         
         // Format messages
         const formattedMessages = formatMessages(messagesToProcess);
-        console.log('Formatted messages:', formattedMessages.length);
         
         if (formattedMessages.length > 0) {
-          console.log('Sample message:', JSON.stringify(formattedMessages[0]));
         }
         
         setMessages(formattedMessages);
@@ -223,11 +210,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
       console.warn('formatMessages received invalid or empty messages array');
       return [];
     }
-    
-    console.log('Processing', messagesArray.length, 'messages for formatting');
-    
-    // Let's log the first message to see its structure
-    console.log('First message in array:', JSON.stringify(messagesArray[0]));
     
     return messagesArray.map(msg => {
       // Extract required fields with fallbacks
@@ -320,9 +302,7 @@ const ChannelChatScreen = ({ route, navigation }) => {
       return;
     }
     
-    try {
-      console.log('Sending message to channel ID:', channelId);
-      
+    try {      
       const sentMessage = await messageService.postChannelMessage(
         currentUser._id,
         channelId,

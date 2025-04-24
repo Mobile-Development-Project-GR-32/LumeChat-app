@@ -8,7 +8,6 @@ const initialState = {
 const reducer = (state = initialState, action) => {
   switch (action.type) {
     case 'SET_USER':
-      console.log('Setting user in Redux:', action.payload);
       
       // Don't set user if it's a fallback profile unless we have no current user
       if (action.payload && action.payload.isFallback && state.user && !state.user.isFallback) {
@@ -24,7 +23,6 @@ const reducer = (state = initialState, action) => {
       return { ...state, user: action.payload };
       
     case 'UPDATE_USER':
-      console.log('Updating user in Redux:', action.payload);
       
       // Don't update with fallback data
       if (action.payload && action.payload.isFallback) {
