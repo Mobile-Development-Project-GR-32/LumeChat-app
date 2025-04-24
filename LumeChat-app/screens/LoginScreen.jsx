@@ -8,6 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { authService } from '../services/auth.service';
 import { useDispatch } from 'react-redux';
+import { useStreamVideoClient } from "@stream-io/video-react-native-sdk";
 
 const LoginScreen = () => {
   const [email, setEmail] = useState("");

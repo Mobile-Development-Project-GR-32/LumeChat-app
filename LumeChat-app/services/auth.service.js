@@ -10,6 +10,9 @@ import { firebaseAuth, firestoreDB } from '../config/firebase.config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { profileService } from './profile.service';
 import { avatars } from '../utils/supports';
+import apiConfig from '@/config/api.config';
+
+const API_URL = apiConfig.API_URL
 
 export const authService = {
   // Check username availability

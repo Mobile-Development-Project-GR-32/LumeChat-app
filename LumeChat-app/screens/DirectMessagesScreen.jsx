@@ -9,8 +9,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSelector } from 'react-redux';
 import { messageService } from '../services/message.service';
 import { THEME_COLORS } from '../utils/constants';
+import { useNavigation, useRoute } from '@react-navigation/core';
+import { useStreamVideoClient } from '@stream-io/video-react-native-sdk';
 
-const DirectMessagesScreen = ({ route, navigation }) => {
+const DirectMessagesScreen = () => {
+  const route = useRoute()
+  const navigation = useNavigation()
   const { userId, userName, userAvatar } = route.params;
   const currentUser = useSelector(state => state.user);
   const [messages, setMessages] = useState([]);
@@ -22,6 +26,7 @@ const DirectMessagesScreen = ({ route, navigation }) => {
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const videoClient = useStreamVideoClient()
   
   const renderReceiverAvatar = useCallback(() => {
     if (userAvatar) {
@@ -469,15 +474,34 @@ const DirectMessagesScreen = ({ route, navigation }) => {
       </TouchableOpacity>
       
       <View style={styles.headerActions}>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={startCallHandler}>
           <MaterialIcons name="call" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <MaterialIcons name="videocam" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </LinearGradient>
   );
+
+  const startCallHandler = useCallback(async() => {
+    const callId = 'call-'+currentUser._id+'-'+userId+'-'+Math.floor(Math.random() * 1000000).toString()
+    try {
+      const call = videoClient?.call('default', callId)
+      await call?.getOrCreate({
+        ring: true,
+        data: {
+          settings_override: {
+            ring: {
+              auto_cancel_timeout_ms: 30000,
+              incoming_call_timeout_ms: 30000
+            }
+          },
+          members: [{user_id: currentUser._id}, {user_id: userId}]
+        }
+      })
+    } catch(error) {
+      Alert.alert('Error calling user', error.message)
+      console.log('Failed to create call', error)
+    }
+  })
 
   return (
     <SafeAreaView style={styles.container}>

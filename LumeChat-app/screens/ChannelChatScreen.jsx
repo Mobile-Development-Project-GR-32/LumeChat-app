@@ -10,6 +10,7 @@ import { useSelector } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
 import { messageService } from '../services/message.service';
 import { channelService } from '../services/channel.service';
+import { useStreamVideoClient } from '@stream-io/video-react-native-sdk';
 
 // Helper function to format dates
 const formatDate = (date) => {
@@ -44,6 +45,7 @@ const formatTime = (date) => {
 const ChannelChatScreen = ({ route, navigation }) => {
   const { channel } = route.params;
   const currentUser = useSelector(state => state.user);
+  const videoClient = useStreamVideoClient()
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -542,6 +544,11 @@ const ChannelChatScreen = ({ route, navigation }) => {
     </View>
   );
 
+  const startOrJoinChannelMeeting = async () => {
+    const callId = 'channel-call-'+channel.name+'-'+Math.floor(Math.random() * 1000000).toString()
+    navigation.navigate('ChannelMeeting', {callId: callId, channelName: channel.name})
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
@@ -569,6 +576,12 @@ const ChannelChatScreen = ({ route, navigation }) => {
         </TouchableOpacity>
         
         <View style={styles.headerActions}>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => startOrJoinChannelMeeting()}
+          >
+            <MaterialIcons name="video-call" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
           <TouchableOpacity 
             style={styles.headerButton}
             onPress={() => toggleMembersList()}
