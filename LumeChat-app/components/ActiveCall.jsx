@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { View, StyleSheet } from 'react-native'
-import { CallContent, useCall } from '@stream-io/video-react-native-sdk'
+import { CallContent, StreamTheme, useCall } from '@stream-io/video-react-native-sdk'
 import CustomCallControls from './CustomCallControls'
 
 
@@ -13,26 +13,16 @@ const ActiveCall = ({ onHangupCallHandler, onCallEnded }) => {
         })
     }, [call, onCallEnded])
 
-    const CustomButtonControls = () => {
-        return (
-            <CustomCallControls onHangupCallHandler={onHangupCallHandler} />
-        )
-    }
-
     return (
-        <View styles = {styles.container}>
-            <CallContent
-                onHangupCallHandler={onHangupCallHandler}
-                CallControls={CustomButtonControls}
-             />
-        </View>
+        <StreamTheme style={styles.container}>
+            <CallContent onHangupCallHandler={onHangupCallHandler}/>
+        </StreamTheme>
     )
 }
 
 const styles = StyleSheet.create({
     container: {
-      flex: 1,
-      backgroundColor: '#36393F',
+      flex: 1
     }
 })
 

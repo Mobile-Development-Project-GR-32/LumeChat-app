@@ -544,13 +544,9 @@ const ChannelChatScreen = ({ route, navigation }) => {
     </View>
   );
 
-  const startChannelMeeting = async () => {
+  const startOrJoinChannelMeeting = async () => {
     const callId = 'channel-call-'+channel.name+'-'+Math.floor(Math.random() * 1000000).toString()
     navigation.navigate('ChannelMeeting', {callId: callId, channelName: channel.name})
-  }
-
-  const joinChannelMeeting = async () => {
-    
   }
 
   return (
@@ -582,13 +578,7 @@ const ChannelChatScreen = ({ route, navigation }) => {
         <View style={styles.headerActions}>
           <TouchableOpacity 
             style={styles.headerButton}
-            onPress={() => startChannelMeeting()}
-          >
-            <MaterialIcons name="video-chat" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.headerButton}
-            onPress={() => joinChannelMeeting()}
+            onPress={() => startOrJoinChannelMeeting()}
           >
             <MaterialIcons name="video-call" size={24} color="#FFFFFF" />
           </TouchableOpacity>

@@ -18,7 +18,7 @@ const Calls = () => {
         if(calls.length > 1) {
             handleCalls()
         }
-    }, calls.length, handleCalls)
+    }, [calls.length, handleCalls])
 
     const firstCall = calls[0]
 

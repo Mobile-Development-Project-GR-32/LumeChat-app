@@ -1,7 +1,6 @@
 import { useNavigation, useRoute } from "@react-navigation/core";
-import { CallingState, StreamCall, useCall, useCallStateHooks, useStreamVideoClient } from "@stream-io/video-react-native-sdk"
+import { CallContent, CallingState, StreamCall, StreamTheme, useCall, useCallStateHooks, useStreamVideoClient } from "@stream-io/video-react-native-sdk"
 import { useCallback, useEffect, useState } from "react";
-import ActiveCall from '../components/ActiveCall'
 import LobbyView from '../components/LobbyView'
 
 const MeetingScreen = () => {
@@ -63,17 +62,10 @@ const MeetingUI = ({callId}) => {
         }
     })
 
-    const returnToChannelScreen = () => {
-        navigation.goBack()
-    }
-
-    const backToLobbyHandler = () => {
-        setShow('lobby')
-    }
-
     const joinCallHandler = useCallback(async () => {
         try {
             await call?.join({create: true})
+            setShow('active-call')
         } catch(error) {
             console.log('Error joining call:', error)
         }
@@ -95,12 +87,13 @@ const MeetingUI = ({callId}) => {
     }
 
     if(show === 'lobby') {
+        return <LobbyView callId={callId} onJoinCallHandler={joinCallHandler}/>
+    }
+    else {
         return (
-            <LobbyView callId={callId} onJoinCallHandler={joinCallHandler}/>
-        )
-    } else {
-        return (
-            <ActiveCall onHangupCallHandler={onCallHangupHandler} onCallEnded={onCallEnded}/>
+            <StreamTheme>
+                <CallContent onHangupCallHandler={onCallHangupHandler}/>
+            </StreamTheme>
         )
     }
 }

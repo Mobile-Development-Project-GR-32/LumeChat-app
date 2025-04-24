@@ -44,8 +44,7 @@ const Stack = createNativeStackNavigator();
 
 const AppContent = () => {
   const dispatch = useDispatch();
-  const user = useSelector(state => state.user)
-  const videoClient = new StreamVideoClient('aa6m2gy6sx9c')
+  const videoClient = new StreamVideoClient('zumtanjchqpa')
 
   useEffect(() => {
     const loadUser = async () => {
