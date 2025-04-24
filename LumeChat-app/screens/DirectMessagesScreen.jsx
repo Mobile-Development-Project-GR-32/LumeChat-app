@@ -482,7 +482,7 @@ const DirectMessagesScreen = () => {
   );
 
   const startCallHandler = useCallback(async() => {
-    const callId = 'call-'+currentUser._id+'-'+userId+'-'+Math.floor(Math.random() * 1000000).toString()
+    const callId = 'call-'+currentUser._id+'-'+userId
     try {
       const call = videoClient?.call('default', callId)
       await call?.getOrCreate({
