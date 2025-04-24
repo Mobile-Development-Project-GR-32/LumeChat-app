@@ -26,21 +26,39 @@ const SignUpScreen = ({ navigation }) => {
   useEffect(() => {
     let verificationCheck;
     if (isVerificationSent) {
+      console.log('Starting verification check interval...');
       verificationCheck = setInterval(async () => {
         try {
+          console.log('Checking email verification status...');
           const isVerified = await authService.checkEmailVerification();
+          console.log('Verification status:', isVerified);
+          
           if (isVerified) {
+            console.log('Email verified! Redirecting to login...');
             clearInterval(verificationCheck);
             setIsVerificationSent(false);
-            navigation.replace("LoginScreen"); // Direct navigation without alert
+            
+            // Ensure we navigate with a slight delay to allow state updates
+            setTimeout(() => {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'LoginScreen' }],
+              });
+            }, 500);
           }
         } catch (error) {
           console.error("Error checking verification:", error);
         }
-      }, 2000);
+      }, 3000); // Increased interval to 3 seconds to reduce API load
     }
-    return () => verificationCheck && clearInterval(verificationCheck);
-  }, [isVerificationSent]);
+    
+    return () => {
+      if (verificationCheck) {
+        console.log('Clearing verification check interval');
+        clearInterval(verificationCheck);
+      }
+    };
+  }, [isVerificationSent, navigation]);
 
   const validateUsername = (text) => {
     const sanitizedUsername = text.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
@@ -110,7 +128,15 @@ const SignUpScreen = ({ navigation }) => {
         username.trim()
       );
 
+      console.log('Signup successful, verification email sent');
       setIsVerificationSent(true);
+      
+      // Add a confirmation alert to ensure user knows what to do
+      Alert.alert(
+        'Verification Email Sent',
+        'Please check your email and verify your account. You will be redirected to login automatically once verified.',
+        [{ text: 'OK' }]
+      );
       
     } catch (error) {
       Alert.alert('Error', error.message);
@@ -136,6 +162,20 @@ const SignUpScreen = ({ navigation }) => {
           <Text style={styles.modalSubText}>
             Once verified, you'll be automatically redirected to login
           </Text>
+          
+          {/* Add a manual login button as fallback */}
+          <TouchableOpacity 
+            style={styles.modalButton}
+            onPress={() => {
+              setIsVerificationSent(false);
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'LoginScreen' }],
+              });
+            }}
+          >
+            <Text style={styles.modalButtonText}>Go to Login</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>

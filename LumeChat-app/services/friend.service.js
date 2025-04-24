@@ -6,6 +6,11 @@ export const friendService = {
     getHeaders: (userId) => {
         if (!userId) {
             console.error('Missing userId in getHeaders');
+            // Return default headers even without userId to prevent immediate crashes
+            return {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            };
         }
         return {
             'Content-Type': 'application/json',
@@ -17,20 +22,53 @@ export const friendService = {
     // Get user profile with friendship status
     getUserProfileWithFriendshipStatus: async (userId, targetUserId) => {
         try {
+            // Validate inputs first
+            if (!userId) throw new Error('User ID is required');
+            if (!targetUserId) throw new Error('Target user ID is required');
+            
             console.log(`Fetching profile with friendship status: userId=${userId}, targetId=${targetUserId}`);
             
-            const response = await fetch(`${API_URL}/friends/profile/${targetUserId}`, {
+            // Make sure the URL is properly encoded
+            const url = `${API_URL}/friends/profile/${encodeURIComponent(targetUserId)}`;
+            console.log('Request URL:', url);
+            
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: friendService.getHeaders(userId)
             });
 
+            // Check for non-OK status codes
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to fetch user profile');
+                // Get more detailed error information if possible
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    const error = await response.json();
+                    throw new Error(error.error || `Failed with status: ${response.status}`);
+                } else {
+                    throw new Error(`Failed with status: ${response.status}`);
+                }
             }
 
             const profile = await response.json();
             console.log('Profile with friendship status:', profile);
+            
+            // Special case: If this is our own profile, no need for friendship status
+            if (userId === targetUserId) {
+                // For own profile, we don't need friendship status
+                // Ensure all fields have proper defaults
+                return {
+                    ...profile,
+                    _id: profile._id || profile.id || targetUserId,
+                    id: profile.id || profile._id || targetUserId,
+                    fullName: profile.fullName || `User ${targetUserId.substring(0, 6)}`,
+                    username: profile.username || `user_${targetUserId.substring(0, 6)}`,
+                    status: profile.status || "Hey there! I am using LumeChat",
+                    profilePic: profile.profilePic || null,
+                    friendshipStatus: 'self',
+                    isFriend: false,
+                    isSelf: true
+                };
+            }
             
             // Normalize friendship status - handle both 'friend' and 'friends'
             let normalizedStatus = profile.friendshipStatus || 'none';
@@ -38,11 +76,15 @@ export const friendService = {
                 normalizedStatus = 'friends';
             }
             
-            // Just ensure the profile has consistent IDs and return it directly
+            // Ensure the profile has consistent IDs and proper defaults for all fields
             return {
                 ...profile,
                 _id: profile._id || profile.id || targetUserId,
                 id: profile.id || profile._id || targetUserId,
+                fullName: profile.fullName || `User ${targetUserId.substring(0, 6)}`,
+                username: profile.username || `user_${targetUserId.substring(0, 6)}`,
+                status: profile.status || "Hey there! I am using LumeChat",
+                profilePic: profile.profilePic || null,
                 // Normalize the friendshipStatus property
                 friendshipStatus: normalizedStatus,
                 // Set isFriend flag for compatibility with older code
@@ -50,18 +92,102 @@ export const friendService = {
             };
         } catch (error) {
             console.error('Get user profile with friendship error:', error);
-            throw error;
+            // Try a different API endpoint as fallback specifically for self-profile
+            if (userId === targetUserId) {
+                try {
+                    console.log('Attempting fallback profile fetch for self profile');
+                    const response = await fetch(`${API_URL}/profile`, {
+                        method: 'GET', 
+                        headers: friendService.getHeaders(userId)
+                    });
+                    
+                    if (response.ok) {
+                        const profile = await response.json();
+                        return {
+                            ...profile,
+                            _id: profile._id || profile.id || targetUserId,
+                            id: profile.id || profile._id || targetUserId,
+                            fullName: profile.fullName || `User ${targetUserId.substring(0, 6)}`,
+                            username: profile.username || `user_${targetUserId.substring(0, 6)}`,
+                            status: profile.status || "Hey there! I am using LumeChat",
+                            profilePic: profile.profilePic || null,
+                            friendshipStatus: 'self',
+                            isFriend: false,
+                            isSelf: true
+                        };
+                    }
+                } catch (fallbackError) {
+                    console.error('Fallback profile fetch failed:', fallbackError);
+                }
+            }
+            
+            // Return a minimal profile if all else fails
+            return {
+                _id: targetUserId,
+                id: targetUserId,
+                fullName: `User ${targetUserId.substring(0, 6)}`,
+                username: `user_${targetUserId.substring(0, 6)}`,
+                status: 'Available',
+                profilePic: null,
+                friendshipStatus: userId === targetUserId ? 'self' : 'none',
+                isFriend: false,
+                isSelf: userId === targetUserId,
+                isFallback: true
+            };
         }
     },
 
     // Get user profile using the friendship status API
     getUserProfile: async (userId, targetUserId) => {
         try {
-            // Simply call the getUserProfileWithFriendshipStatus method to ensure consistent behavior
+            // If we're fetching our own profile, use a direct approach
+            if (userId === targetUserId) {
+                try {
+                    console.log('Fetching own profile directly from /profile endpoint');
+                    const response = await fetch(`${API_URL}/profile`, {
+                        method: 'GET',
+                        headers: friendService.getHeaders(userId)
+                    });
+                    
+                    if (response.ok) {
+                        const profile = await response.json();
+                        return {
+                            ...profile,
+                            _id: profile._id || userId,
+                            id: profile.id || userId,
+                            friendshipStatus: 'self',
+                            isFriend: false,
+                            isSelf: true
+                        };
+                    } else {
+                        console.warn(`Profile endpoint returned ${response.status}, falling back to friends/profile`);
+                    }
+                } catch (directError) {
+                    console.error('Direct profile fetch failed:', directError);
+                }
+            }
+            
+            // Add validation here too
+            if (!userId) throw new Error('User ID is required');
+            if (!targetUserId) throw new Error('Target user ID is required');
+            
+            console.log(`Getting user profile: userId=${userId}, targetId=${targetUserId}`);
+            
+            // Fall back to friendship status method
             return await friendService.getUserProfileWithFriendshipStatus(userId, targetUserId);
         } catch (error) {
             console.error('User profile fetch error:', error);
-            throw error;
+            return {
+                _id: targetUserId,
+                id: targetUserId,
+                fullName: 'User ' + targetUserId.substring(0, 6),
+                username: 'user_' + targetUserId.substring(0, 6),
+                status: 'Available',
+                friendshipStatus: userId === targetUserId ? 'self' : 'none',
+                isFriend: false,
+                isSelf: userId === targetUserId,
+                isFallback: true
+            };
         }
     },
 

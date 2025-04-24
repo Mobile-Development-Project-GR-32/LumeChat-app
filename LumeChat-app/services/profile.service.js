@@ -16,11 +16,30 @@ export const profileService = {
     // Get complete user profile from Firebase Auth
     getProfile: async (userId) => {
         try {
+            // Validate userId first
+            if (!userId) {
+                console.error('Profile fetch failed: Missing userId');
+                throw new Error('User ID is required');
+            }
+            
             console.log('Fetching profile for userId:', userId);
+            
+            // First check AsyncStorage cache to have something to show immediately
+            let cachedProfile = null;
+            try {
+                const cachedUserData = await AsyncStorage.getItem('user');
+                if (cachedUserData) {
+                    cachedProfile = JSON.parse(cachedUserData);
+                    console.log('Found cached profile data:', cachedProfile.fullName || "No name");
+                }
+            } catch (cacheError) {
+                console.warn('Cache retrieval failed:', cacheError);
+            }
             
             // Try multiple approaches to get complete profile data
             try {
                 // First try: Get profile from API
+                console.log('Attempting to fetch profile from direct API endpoint');
                 const response = await fetch(`${API_URL}/profile`, {
                     method: 'GET',
                     headers: {
@@ -38,17 +57,28 @@ export const profileService = {
                 const profile = await response.json();
                 console.log('Profile retrieved from API:', profile);
 
-                // If profile is incomplete, throw error to try fallback
-                if (!profile.fullName || profile.isFallback) {
-                    console.warn('API returned incomplete profile:', profile);
+                // Special safety check for basic API response 
+                if (!profile || typeof profile !== 'object') {
+                    console.warn('API returned non-object profile response');
+                    throw new Error('API returned invalid profile format');
+                }
+
+                // MODIFIED LOGIC: Don't reject profiles with empty string values
+                // Only reject if the profile is missing critical fields entirely
+                if (profile._id === undefined || profile.username === undefined) {
+                    console.warn('API returned profile missing critical fields:', profile);
                     throw new Error('API returned incomplete profile');
                 }
 
-                // Ensure profile has consistent ID format
+                // Set default values for empty fields
                 const completeProfile = {
                     ...profile,
                     _id: profile._id || userId,
-                    id: profile.id || userId
+                    id: profile.id || userId,
+                    fullName: profile.fullName || `User ${userId.substring(0, 6)}`,
+                    username: profile.username || `user_${userId.substring(0, 6)}`,
+                    status: profile.status || "Hey there! I am using LumeChat",
+                    profilePic: profile.profilePic || null  // Ensure profilePic is never undefined
                 };
 
                 // Update AsyncStorage with complete data
@@ -57,57 +87,127 @@ export const profileService = {
             } catch (apiError) {
                 console.warn('API profile fetch failed:', apiError.message);
                 
-                // Second try: Use friend service as fallback
-                try {
-                    console.log('Trying to get profile via friend service...');
-                    const friendProfile = await friendService.getUserProfile(userId, userId);
-                    
-                    // Check if friendProfile has required fields
-                    if (friendProfile && friendProfile.fullName && !friendProfile.isFallback) {
-                        console.log('Successfully retrieved profile from friend service');
+                // Second try: Use friend service as fallback but bypass if it's the issue
+                if (!apiError.message.includes('Friend service')) {
+                    try {
+                        console.log('Trying to get profile via friend service...');
+                        // We're fetching our own profile, so userId is both the requester and target
+                        const friendProfile = await friendService.getUserProfile(userId, userId);
                         
-                        // Ensure profile has consistent ID format
-                        const completeProfile = {
-                            ...friendProfile,
-                            _id: friendProfile._id || userId,
-                            id: friendProfile.id || userId
+                        // Check if friendProfile has required fields (allowing empty strings)
+                        if (friendProfile && friendProfile._id) {
+                            console.log('Successfully retrieved profile from friend service');
+                            
+                            // Ensure profile has consistent ID format and default values for empty fields
+                            const completeProfile = {
+                                ...friendProfile,
+                                _id: friendProfile._id || userId,
+                                id: friendProfile.id || userId,
+                                fullName: friendProfile.fullName || `User ${userId.substring(0, 6)}`,
+                                username: friendProfile.username || `user_${userId.substring(0, 6)}`,
+                                status: friendProfile.status || "Hey there! I am using LumeChat",
+                                profilePic: friendProfile.profilePic || null  // Ensure profilePic is never undefined
+                            };
+                            
+                            // Update AsyncStorage
+                            await AsyncStorage.setItem('user', JSON.stringify(completeProfile));
+                            return completeProfile;
+                        }
+                        
+                        console.warn('Friend service returned incomplete profile or fallback');
+                        throw new Error('Friend service returned incomplete profile');
+                    } catch (friendError) {
+                        console.error('Friend service profile fetch failed:', friendError.message);
+                        
+                        // If we have cached data, use it as a fallback
+                        if (cachedProfile && cachedProfile._id) {
+                            console.log('Using cached profile data from AsyncStorage');
+                            
+                            // Ensure cached profile has all required fields with defaults
+                            const completeProfile = {
+                                ...cachedProfile,
+                                fullName: cachedProfile.fullName || `User ${userId.substring(0, 6)}`,
+                                username: cachedProfile.username || `user_${userId.substring(0, 6)}`,
+                                status: cachedProfile.status || "Hey there! I am using LumeChat",
+                                profilePic: cachedProfile.profilePic || null  // Ensure profilePic is never undefined
+                            };
+                            
+                            await AsyncStorage.setItem('user', JSON.stringify(completeProfile));
+                            return completeProfile;
+                        }
+                        
+                        // If all attempts fail, create a minimal profile with ID
+                        console.warn('Creating minimal profile as fallback');
+                        const fallbackProfile = {
+                            _id: userId,
+                            id: userId,
+                            fullName: `User ${userId.substring(0, 6)}`,
+                            username: `user_${userId.substring(0, 6)}`,
+                            status: 'Available',
+                            profilePic: null,  // Explicitly set to null, not undefined
+                            isFallback: true
                         };
                         
-                        // Update AsyncStorage
+                        // Still save this fallback to AsyncStorage to prevent repeated failures
+                        await AsyncStorage.setItem('user', JSON.stringify(fallbackProfile));
+                        
+                        return fallbackProfile;
+                    }
+                } else {
+                    // If friend service is the source of the error, use cached data if available
+                    if (cachedProfile && cachedProfile._id) {
+                        console.log('Using cached profile because friend service is failing');
+                        
+                        // Ensure cached profile has all required fields
+                        const completeProfile = {
+                            ...cachedProfile,
+                            fullName: cachedProfile.fullName || `User ${userId.substring(0, 6)}`,
+                            username: cachedProfile.username || `user_${userId.substring(0, 6)}`,
+                            status: cachedProfile.status || "Hey there! I am using LumeChat",
+                            profilePic: cachedProfile.profilePic || null  // Ensure profilePic is never undefined
+                        };
+                        
                         await AsyncStorage.setItem('user', JSON.stringify(completeProfile));
                         return completeProfile;
-                    } else {
-                        console.warn('Friend service returned incomplete profile:', friendProfile);
-                        throw new Error('Friend service returned incomplete profile');
-                    }
-                } catch (friendError) {
-                    console.error('Friend service profile fetch failed:', friendError.message);
-                    
-                    // Final try: Load from AsyncStorage as last resort
-                    const cachedUserData = await AsyncStorage.getItem('user');
-                    if (cachedUserData) {
-                        const parsedData = JSON.parse(cachedUserData);
-                        if (parsedData.fullName && !parsedData.isFallback) {
-                            console.log('Using cached profile data from AsyncStorage');
-                            return parsedData;
-                        }
                     }
                     
-                    // If all attempts fail, create a minimal profile with ID
-                    console.warn('Creating minimal profile as fallback');
-                    return {
+                    // Last resort fallback
+                    const fallbackProfile = {
                         _id: userId,
                         id: userId,
-                        fullName: 'User ' + userId.substring(0, 6),
-                        username: 'user_' + userId.substring(0, 6),
+                        fullName: `User ${userId.substring(0, 6)}`,
+                        username: `user_${userId.substring(0, 6)}`,
                         status: 'Available',
+                        profilePic: null,  // Explicitly set to null, not undefined
                         isFallback: true
                     };
+                    
+                    await AsyncStorage.setItem('user', JSON.stringify(fallbackProfile));
+                    return fallbackProfile;
                 }
             }
         } catch (error) {
             console.error('Profile fetch completely failed:', error);
-            throw error;
+            
+            // Return a minimal fallback profile even on complete failure
+            const emergencyFallback = {
+                _id: userId || 'unknown',
+                id: userId || 'unknown',
+                fullName: `User ${userId ? userId.substring(0, 6) : 'Unknown'}`,
+                username: `user_${userId ? userId.substring(0, 6) : 'unknown'}`,
+                status: 'Available',
+                profilePic: null,  // Explicitly set to null, not undefined
+                isFallback: true,
+                isEmergencyFallback: true
+            };
+            
+            try {
+                await AsyncStorage.setItem('user', JSON.stringify(emergencyFallback));
+            } catch (storageError) {
+                console.error('Failed to save emergency fallback to storage:', storageError);
+            }
+            
+            return emergencyFallback;
         }
     },
 

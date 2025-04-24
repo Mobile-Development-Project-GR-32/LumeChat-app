@@ -64,16 +64,37 @@ const DirectMessagesScreen = () => {
         50
       );
       
-      console.log('API returned message data:', messageData);
+      console.log('API returned message data:', JSON.stringify(messageData));
       
       let messagesToProcess = [];
       if (messageData && Array.isArray(messageData)) {
         messagesToProcess = messageData;
+        console.log('Message data is an array with length:', messagesToProcess.length);
       } else if (messageData && messageData.messages && Array.isArray(messageData.messages)) {
         messagesToProcess = messageData.messages;
+        console.log('Message data has messages array with length:', messagesToProcess.length);
+      } else if (messageData && typeof messageData === 'object') {
+        // Try to extract messages from other possible formats
+        const possibleMessageArrays = Object.values(messageData).filter(val => Array.isArray(val));
+        if (possibleMessageArrays.length > 0) {
+          // Use the largest array found
+          messagesToProcess = possibleMessageArrays.reduce((a, b) => a.length > b.length ? a : b, []);
+          console.log('Found potential messages array with length:', messagesToProcess.length);
+        } else {
+          console.error('Could not locate messages array in response:', messageData);
+          setMessages([]);
+          setError('Could not parse message data');
+          return;
+        }
       } else {
         console.error('Invalid message data format:', messageData);
         setError('Invalid message data received');
+        setMessages([]);
+        return;
+      }
+      
+      if (!messagesToProcess || messagesToProcess.length === 0) {
+        console.log('No messages to process, setting empty messages array');
         setMessages([]);
         return;
       }
@@ -98,32 +119,64 @@ const DirectMessagesScreen = () => {
   };
 
   const formatMessages = (messagesArray) => {
-    if (!messagesArray || !Array.isArray(messagesArray) || messagesArray.length === 0) {
+    console.log('formatMessages received:', messagesArray);
+    
+    // Add comprehensive validation
+    if (!messagesArray) {
+      console.error('formatMessages: messagesArray is null or undefined');
       return [];
     }
     
-    return messagesArray.map(msg => {
-      const id = msg.id || msg._id || `local-${Date.now()}-${Math.random()}`;
-      const text = msg.content || msg.text || msg.message || '';
-      const timestamp = msg.timestamp || msg.createdAt || Date.now();
-      const senderId = msg.senderId || msg.sender || msg.userId || 'unknown';
-      const senderName = msg.senderName || msg.userName || 'Unknown User';
-      const avatar = msg.senderPhoto || msg.senderAvatar || msg.userAvatar || undefined;
+    if (!Array.isArray(messagesArray)) {
+      console.error('formatMessages: messagesArray is not an array:', typeof messagesArray);
+      return [];
+    }
+    
+    if (messagesArray.length === 0) {
+      console.log('formatMessages: messagesArray is empty');
+      return [];
+    }
+    
+    try {
+      const formatted = messagesArray.map(msg => {
+        if (!msg) {
+          console.warn('Null or undefined message in array');
+          return null;
+        }
+        
+        console.log('Processing message:', JSON.stringify(msg));
+        
+        // Extract fields with fallbacks
+        const id = msg.id || msg._id || `local-${Date.now()}-${Math.random()}`;
+        const text = msg.content || msg.text || msg.message || '';
+        const timestamp = msg.timestamp || msg.createdAt || Date.now();
+        const senderId = msg.senderId || msg.sender || msg.userId || 'unknown';
+        const senderName = msg.senderName || msg.userName || 'Unknown User';
+        const avatar = msg.senderPhoto || msg.senderAvatar || msg.userAvatar || undefined;
+        
+        const isMine = senderId === currentUser._id;
+        
+        return {
+          id,
+          text,
+          createdAt: new Date(timestamp),
+          user: {
+            _id: senderId,
+            name: senderName,
+            avatar
+          },
+          isMine
+        };
+      })
+      .filter(Boolean) // Remove any null items from the map
+      .sort((a, b) => a.createdAt - b.createdAt);
       
-      const isMine = senderId === currentUser._id;
-      
-      return {
-        id,
-        text,
-        createdAt: new Date(timestamp),
-        user: {
-          _id: senderId,
-          name: senderName,
-          avatar
-        },
-        isMine
-      };
-    }).sort((a, b) => a.createdAt - b.createdAt);
+      console.log(`Successfully formatted ${formatted.length} messages`);
+      return formatted;
+    } catch (error) {
+      console.error('Error in formatMessages:', error);
+      return [];
+    }
   };
 
   useEffect(() => {
@@ -265,10 +318,64 @@ const DirectMessagesScreen = () => {
     }
   };
 
+  const formatMessageTime = (dateObj) => {
+    const now = new Date();
+    const messageDate = new Date(dateObj);
+    
+    if (messageDate.toDateString() === now.toDateString()) {
+      return messageDate.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    }
+    
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    if (messageDate.toDateString() === yesterday.toDateString()) {
+      return `Yesterday, ${messageDate.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      })}`;
+    }
+    
+    const oneWeekAgo = new Date(now);
+    oneWeekAgo.setDate(now.getDate() - 7);
+    if (messageDate > oneWeekAgo) {
+      return `${messageDate.toLocaleDateString([], { weekday: 'short' })}, ${
+        messageDate.toLocaleTimeString([], { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          hour12: true 
+        })
+      }`;
+    }
+    
+    return `${messageDate.toLocaleDateString([], { 
+      month: 'short', 
+      day: 'numeric' 
+    })}, ${
+      messageDate.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true 
+      })
+    }`;
+  };
+
+  const shouldShowDateSeparator = (currentMsg, prevMsg) => {
+    if (!prevMsg) return true;
+    
+    const currentDate = new Date(currentMsg.createdAt).toDateString();
+    const prevDate = new Date(prevMsg.createdAt).toDateString();
+    
+    return currentDate !== prevDate;
+  };
+
   const renderMessageItem = () => {
     console.log(`Rendering ${messages.length} messages`);
     if (messages.length > 0) {
-      // First, deduplicate messages by content and timestamp proximity
       const uniqueMessages = messages.reduce((acc, current) => {
         const isDuplicate = acc.some(item => 
           (item.id === current.id) || 
@@ -283,14 +390,44 @@ const DirectMessagesScreen = () => {
         return acc;
       }, []);
       
-      return uniqueMessages.map((msg, index) => {
+      let messageComponents = [];
+      
+      uniqueMessages.forEach((msg, index) => {
         const isCurrentUser = msg.user._id === currentUser._id;
-        const messageTime = new Date(msg.createdAt).toLocaleTimeString([], { 
-          hour: '2-digit', 
-          minute: '2-digit' 
-        });
+        const prevMessage = index > 0 ? uniqueMessages[index - 1] : null;
         
-        return (
+        if (shouldShowDateSeparator(msg, prevMessage)) {
+          const messageDate = new Date(msg.createdAt);
+          const today = new Date();
+          const yesterday = new Date(today);
+          yesterday.setDate(today.getDate() - 1);
+          
+          let dateText;
+          if (messageDate.toDateString() === today.toDateString()) {
+            dateText = "Today";
+          } else if (messageDate.toDateString() === yesterday.toDateString()) {
+            dateText = "Yesterday";
+          } else {
+            dateText = messageDate.toLocaleDateString([], {
+              weekday: 'long',
+              month: 'long', 
+              day: 'numeric',
+              year: messageDate.getFullYear() !== today.getFullYear() ? 'numeric' : undefined
+            });
+          }
+          
+          messageComponents.push(
+            <View key={`date-${msg.id}`} style={styles.dateSeparator}>
+              <View style={styles.dateLine} />
+              <Text style={styles.dateText}>{dateText}</Text>
+              <View style={styles.dateLine} />
+            </View>
+          );
+        }
+        
+        const messageTime = formatMessageTime(msg.createdAt);
+        
+        messageComponents.push(
           <View 
             key={msg.id || `msg-${index}`} 
             style={{
@@ -298,7 +435,7 @@ const DirectMessagesScreen = () => {
               justifyContent: isCurrentUser ? 'flex-end' : 'flex-start',
               marginBottom: 12,
               alignItems: 'flex-end',
-              opacity: msg.pending ? 0.7 : 1 // Slightly dim pending messages
+              opacity: msg.pending ? 0.7 : 1
             }}
           >
             {!isCurrentUser && (
@@ -339,15 +476,15 @@ const DirectMessagesScreen = () => {
               
               <View style={{
                 flexDirection: 'row',
-                justifyContent: 'space-between',
+                justifyContent: 'flex-end',
                 alignItems: 'center',
                 marginTop: 4
               }}>
                 <Text style={{
-                  color: 'rgba(255,255,255,0.5)', 
-                  fontSize: 10,
-                  textAlign: isCurrentUser ? 'right' : 'left',
-                  flex: 1
+                  color: 'rgba(255,255,255,0.7)', 
+                  fontSize: 11,
+                  textAlign: 'right',
+                  fontStyle: 'italic'
                 }}>
                   {messageTime}
                 </Text>
@@ -365,7 +502,6 @@ const DirectMessagesScreen = () => {
                 {msg.failed && (
                   <TouchableOpacity 
                     onPress={() => {
-                      // Re-try sending the failed message
                       const failedText = msg.text;
                       setMessages(prev => prev.filter(m => m.id !== msg.id));
                       setInputText(failedText);
@@ -387,6 +523,8 @@ const DirectMessagesScreen = () => {
           </View>
         );
       });
+      
+      return messageComponents;
     }
     return null;
   };
@@ -482,7 +620,7 @@ const DirectMessagesScreen = () => {
   );
 
   const startCallHandler = useCallback(async() => {
-    const callId = 'call-'+currentUser._id+'-'+userId+'-'+Math.floor(Math.random() * 1000000).toString()
+    const callId = 'call-'+currentUser._id+'-'+userId
     try {
       const call = videoClient?.call('default', callId)
       await call?.getOrCreate({
@@ -734,6 +872,27 @@ const styles = StyleSheet.create({
   attachButton: {
     padding: 8,
     marginRight: 8,
+  },
+  dateSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+    paddingHorizontal: 10,
+  },
+  dateLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  dateText: {
+    color: '#BBBBBB',
+    fontSize: 12,
+    fontWeight: '600',
+    marginHorizontal: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(47, 49, 54, 0.6)',
+    borderRadius: 12,
   },
 });
 

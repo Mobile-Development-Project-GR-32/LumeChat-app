@@ -41,15 +41,17 @@ export const authService = {
       // Send verification email
       await sendEmailVerification(userCred.user);
 
-      // Create initial user data without profile picture
+      // Create initial user data with null for profilePic and defaults for empty fields
       const userData = {
         _id: userCred.user.uid,
-        fullName,
+        id: userCred.user.uid,
+        fullName: fullName || `User ${userCred.user.uid.substring(0, 6)}`,
         email,
         username: username.toLowerCase(),
         status: 'Hey there! I am using LumeChat',
         createdAt: new Date().toISOString(),
-        emailVerified: false
+        emailVerified: false,
+        profilePic: null  // Explicitly set to null instead of undefined
       };
 
       console.log('Storing user data:', userData);
@@ -77,12 +79,56 @@ export const authService = {
       const userCred = await signInWithEmailAndPassword(firebaseAuth, email, password);
       
       // Get fresh profile data from API
-      const profile = await profileService.getProfile(userCred.user.uid);
-      
-      // Store complete profile data including profilePic
-      await AsyncStorage.setItem('user', JSON.stringify(profile));
-      
-      return profile;
+      try {
+        console.log('Fetching profile after login...');
+        const profile = await profileService.getProfile(userCred.user.uid);
+        
+        // If we only got a fallback profile, try to enhance it with Firebase data
+        if (profile.isFallback) {
+          console.log('Received fallback profile, attempting to enhance with Firebase data');
+          // Get user document from Firestore
+          const userDocRef = doc(firestoreDB, "users", userCred.user.uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            console.log('Found user data in Firestore:', userData.fullName);
+            
+            // Merge Firebase data with the fallback profile
+            const enhancedProfile = {
+              ...profile,
+              ...userData,
+              _id: userCred.user.uid,
+              id: userCred.user.uid,
+              isFallback: false
+            };
+            
+            await AsyncStorage.setItem('user', JSON.stringify(enhancedProfile));
+            return enhancedProfile;
+          }
+        }
+        
+        // Store complete profile data
+        await AsyncStorage.setItem('user', JSON.stringify(profile));
+        return profile;
+      } catch (profileError) {
+        console.error('Failed to fetch profile after login:', profileError);
+        
+        // Fallback to creating a basic profile from Firebase Auth data
+        const basicProfile = {
+          _id: userCred.user.uid,
+          id: userCred.user.uid,
+          fullName: userCred.user.displayName || `User ${userCred.user.uid.substring(0, 6)}`,
+          email: userCred.user.email,
+          username: userCred.user.email?.split('@')[0]?.toLowerCase() || `user_${userCred.user.uid.substring(0, 6)}`,
+          status: 'Available',
+          emailVerified: userCred.user.emailVerified,
+          isFallback: true
+        };
+        
+        await AsyncStorage.setItem('user', JSON.stringify(basicProfile));
+        return basicProfile;
+      }
     } catch (error) {
       console.error('Sign in error:', error);
       throw new Error(
@@ -114,17 +160,23 @@ export const authService = {
           const pendingUserData = JSON.parse(pendingDataString);
 
           if (pendingUserData) {
-            // Get profile picture from API
-            const profileData = await profileService.getProfile(user.uid);
+            // Ensure required fields aren't undefined before writing to Firestore
+            // Fix for Firestore unsupported field value error
             const userData = {
               ...pendingUserData,
               emailVerified: true,
               verifiedAt: new Date().toISOString(),
-              profilePic: profileData.profilePic // Use API profile picture
+              profilePic: null  // Explicitly set to null instead of undefined
             };
 
+            console.log('Writing verified user data to Firestore:', userData);
             await setDoc(doc(firestoreDB, "users", user.uid), userData);
             await AsyncStorage.removeItem('pendingUserData');
+
+            // Also update the user in AsyncStorage
+            await AsyncStorage.setItem('user', JSON.stringify(userData));
+          } else {
+            console.warn('No pending user data found for verification');
           }
           return true;
         } catch (error) {

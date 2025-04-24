@@ -5,7 +5,18 @@ import Store from "../context/store";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { Provider as PaperProvider } from 'react-native-paper';
-import { StreamVideo, StreamVideoClient } from '@stream-io/video-react-native-sdk'
+import { Platform, Text, View } from 'react-native';
+import Constants from 'expo-constants';
+// Conditionally import Stream Video SDK
+let StreamVideo, StreamVideoClient;
+try {
+  // This might fail in Expo Go
+  const StreamVideoPackage = require('@stream-io/video-react-native-sdk');
+  StreamVideo = StreamVideoPackage.StreamVideo;
+  StreamVideoClient = StreamVideoPackage.StreamVideoClient;
+} catch (error) {
+  console.log('Stream Video SDK is not available in this environment');
+}
 import {GETSTREAM_API_KEY, API_URL} from '../config/api.config'
 import { VideoWrapper } from "../components/VideoWrapper";
 
@@ -19,9 +30,7 @@ import DirectMessagesScreen from '../screens/DirectMessagesScreen';
 import CreateChannelScreen from "../screens/CreateChannelScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import SettingsScreen from "../screens/settings/SettingsScreen";
-// Import main notifications screen
 import NotificationsScreen from "../screens/Notifications_Screen"; 
-// Remove the incorrect import for settings notification screen
 import PrivacyScreen from "../screens/settings/PrivacyScreen";
 import SecurityScreen from "../screens/settings/SecurityScreen";
 import ThemeScreen from "../screens/settings/ThemeScreen";
@@ -42,9 +51,27 @@ import Calls from '../screens/Calls'
 
 const Stack = createNativeStackNavigator();
 
+// Create a fallback component for when Stream Video is not available
+const StreamVideoFallback = ({ children }) => {
+  return children;
+};
+
 const AppContent = () => {
   const dispatch = useDispatch();
-  const videoClient = new StreamVideoClient('zumtanjchqpa')
+  const [isExpoGo, setIsExpoGo] = useState(false);
+  
+  // Check if running in Expo Go
+  useEffect(() => {
+    const checkExpoGo = async () => {
+      const isExpoGoEnv = Constants.executionEnvironment === 'storeClient';
+      setIsExpoGo(isExpoGoEnv);
+    };
+    
+    checkExpoGo();
+  }, []);
+  
+  // Initialize video client only if StreamVideoClient is available
+  const videoClient = !isExpoGo && StreamVideoClient ? new StreamVideoClient('zumtanjchqpa') : null;
 
   useEffect(() => {
     const loadUser = async () => {
@@ -146,8 +173,6 @@ const AppContent = () => {
           headerTintColor: '#fff',
         }}
       />
-      
-      {/* Remove NotificationsSettings screen since the file doesn't exist */}
       
       <Stack.Screen name="Privacy" component={PrivacyScreen}
         options={{
@@ -252,7 +277,6 @@ const AppContent = () => {
         }}
       />
 
-      {/* Add notifications screen route */}
       <Stack.Screen 
         name="Notifications_Screen" 
         component={NotificationsScreen}
@@ -263,13 +287,30 @@ const AppContent = () => {
       </>
   )
 
-  return (
+  // Conditional rendering based on environment
+  if (isExpoGo) {
+    return (
+      <>
+        <Stack.Navigator screenOptions={{headerShown: false}}>
+          {appContent}
+        </Stack.Navigator>
+        {/* Skip Calls component in Expo Go since it depends on native modules */}
+      </>
+    );
+  }
+
+  // Use Stream Video SDK only when available
+  return StreamVideo && videoClient ? (
     <StreamVideo client={videoClient}>
       <Stack.Navigator screenOptions={{headerShown: false}}>
         {appContent}
       </Stack.Navigator>
       <Calls/>
     </StreamVideo>
+  ) : (
+    <Stack.Navigator screenOptions={{headerShown: false}}>
+      {appContent}
+    </Stack.Navigator>
   );
 };
 
