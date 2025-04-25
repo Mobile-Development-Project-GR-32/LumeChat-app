@@ -5,7 +5,6 @@ const API_URL = apiConfig.API_URL;
 export const friendService = {
     getHeaders: (userId) => {
         if (!userId) {
-            console.error('Missing userId in getHeaders');
             // Return default headers even without userId to prevent immediate crashes
             return {
                 'Content-Type': 'application/json',
@@ -26,11 +25,8 @@ export const friendService = {
             if (!userId) throw new Error('User ID is required');
             if (!targetUserId) throw new Error('Target user ID is required');
             
-            console.log(`Fetching profile with friendship status: userId=${userId}, targetId=${targetUserId}`);
-            
             // Make sure the URL is properly encoded
             const url = `${API_URL}/friends/profile/${encodeURIComponent(targetUserId)}`;
-            console.log('Request URL:', url);
             
             const response = await fetch(url, {
                 method: 'GET',
@@ -50,7 +46,6 @@ export const friendService = {
             }
 
             const profile = await response.json();
-            console.log('Profile with friendship status:', profile);
             
             // Special case: If this is our own profile, no need for friendship status
             if (userId === targetUserId) {
@@ -91,11 +86,9 @@ export const friendService = {
                 isFriend: normalizedStatus === 'friends' || normalizedStatus === 'friend'
             };
         } catch (error) {
-            console.error('Get user profile with friendship error:', error);
             // Try a different API endpoint as fallback specifically for self-profile
             if (userId === targetUserId) {
                 try {
-                    console.log('Attempting fallback profile fetch for self profile');
                     const response = await fetch(`${API_URL}/profile`, {
                         method: 'GET', 
                         headers: friendService.getHeaders(userId)
@@ -117,7 +110,7 @@ export const friendService = {
                         };
                     }
                 } catch (fallbackError) {
-                    console.error('Fallback profile fetch failed:', fallbackError);
+                    // Continue to fallback
                 }
             }
             

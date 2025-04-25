@@ -141,7 +141,6 @@ export const messageService = {
       // Check if the channel is known to be deleted
       const channelService = require('./channel.service').default;
       if (channelService.isChannelDeleted(channelId)) {
-        console.log(`Skipping message fetch for deleted channel: ${channelId}`);
         throw new Error('Channel not found or was deleted');
       }
       
@@ -149,8 +148,6 @@ export const messageService = {
       if (before) {
         url += `&before=${before}`;
       }
-      
-      console.log(`Fetching messages for channel ${channelId}, limit: ${limit}, before: ${before || 'none'}`);
       
       const response = await fetch(url, {
         headers: messageService.getHeaders(userId)
@@ -163,7 +160,7 @@ export const messageService = {
           const error = await response.json();
           errorMessage = error.error || errorMessage;
         } catch (parseError) {
-          console.warn('Error parsing error response:', parseError);
+          // Use default error message
         }
         
         // If channel not found, mark it as deleted
@@ -175,11 +172,8 @@ export const messageService = {
         throw new Error(errorMessage);
       }
       
-      const result = await response.json();
-      console.log(`Fetched ${result.messages?.length || 0} channel messages`);
-      return result;
+      return await response.json();
     } catch (error) {
-      console.error('Get channel messages error:', error);
       throw error;
     }
   },
@@ -364,7 +358,36 @@ export const messageService = {
         
         // Get messages since last check
         try {
-          // ...existing message fetching code...
+          const response = await messageService.getChannelMessages(
+            userId, 
+            channelId,
+            10,
+            null
+          );
+          
+          // Reset error count on success
+          consecutiveErrorCount = 0;
+          
+          if (response && response.messages) {
+            // Find messages newer than our last check
+            const newMessages = response.messages.filter(msg => 
+              new Date(msg.timestamp) > new Date(lastMessageTimestamp)
+            );
+            
+            // Update timestamp for next check
+            if (response.messages.length > 0) {
+              const mostRecentMsg = response.messages.reduce((latest, msg) => {
+                return new Date(msg.timestamp) > new Date(latest.timestamp) ? msg : latest;
+              }, response.messages[0]);
+              
+              lastMessageTimestamp = new Date(mostRecentMsg.timestamp).getTime();
+            }
+            
+            // Call callback for each new message
+            newMessages.forEach(message => {
+              callback(message);
+            });
+          }
         } catch (error) {
           // Handle channel deleted error
           if (error.message && (

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiConfig from '../config/api.config';
-import { friendService } from './friend.service'; // Add import for friend service
+import { friendService } from './friend.service';
 
 const API_URL = apiConfig.API_URL;
 
@@ -18,11 +18,8 @@ export const profileService = {
         try {
             // Validate userId first
             if (!userId) {
-                console.error('Profile fetch failed: Missing userId');
                 throw new Error('User ID is required');
             }
-            
-            console.log('Fetching profile for userId:', userId);
             
             // First check AsyncStorage cache to have something to show immediately
             let cachedProfile = null;
@@ -30,16 +27,14 @@ export const profileService = {
                 const cachedUserData = await AsyncStorage.getItem('user');
                 if (cachedUserData) {
                     cachedProfile = JSON.parse(cachedUserData);
-                    console.log('Found cached profile data:', cachedProfile.fullName || "No name");
                 }
             } catch (cacheError) {
-                console.warn('Cache retrieval failed:', cacheError);
+                // Continue without cache
             }
             
             // Try multiple approaches to get complete profile data
             try {
                 // First try: Get profile from API
-                console.log('Attempting to fetch profile from direct API endpoint');
                 const response = await fetch(`${API_URL}/profile`, {
                     method: 'GET',
                     headers: {
@@ -50,23 +45,19 @@ export const profileService = {
                 });
 
                 if (!response.ok) {
-                    console.warn('API profile fetch failed, status:', response.status);
                     throw new Error('Failed to fetch profile from API');
                 }
 
                 const profile = await response.json();
-                console.log('Profile retrieved from API:', profile);
 
                 // Special safety check for basic API response 
                 if (!profile || typeof profile !== 'object') {
-                    console.warn('API returned non-object profile response');
                     throw new Error('API returned invalid profile format');
                 }
 
                 // MODIFIED LOGIC: Don't reject profiles with empty string values
                 // Only reject if the profile is missing critical fields entirely
                 if (profile._id === undefined || profile.username === undefined) {
-                    console.warn('API returned profile missing critical fields:', profile);
                     throw new Error('API returned incomplete profile');
                 }
 
@@ -85,19 +76,14 @@ export const profileService = {
                 await AsyncStorage.setItem('user', JSON.stringify(completeProfile));
                 return completeProfile;
             } catch (apiError) {
-                console.warn('API profile fetch failed:', apiError.message);
-                
                 // Second try: Use friend service as fallback but bypass if it's the issue
                 if (!apiError.message.includes('Friend service')) {
                     try {
-                        console.log('Trying to get profile via friend service...');
                         // We're fetching our own profile, so userId is both the requester and target
                         const friendProfile = await friendService.getUserProfile(userId, userId);
                         
                         // Check if friendProfile has required fields (allowing empty strings)
                         if (friendProfile && friendProfile._id) {
-                            console.log('Successfully retrieved profile from friend service');
-                            
                             // Ensure profile has consistent ID format and default values for empty fields
                             const completeProfile = {
                                 ...friendProfile,
@@ -114,15 +100,10 @@ export const profileService = {
                             return completeProfile;
                         }
                         
-                        console.warn('Friend service returned incomplete profile or fallback');
                         throw new Error('Friend service returned incomplete profile');
                     } catch (friendError) {
-                        console.error('Friend service profile fetch failed:', friendError.message);
-                        
                         // If we have cached data, use it as a fallback
                         if (cachedProfile && cachedProfile._id) {
-                            console.log('Using cached profile data from AsyncStorage');
-                            
                             // Ensure cached profile has all required fields with defaults
                             const completeProfile = {
                                 ...cachedProfile,
@@ -137,7 +118,6 @@ export const profileService = {
                         }
                         
                         // If all attempts fail, create a minimal profile with ID
-                        console.warn('Creating minimal profile as fallback');
                         const fallbackProfile = {
                             _id: userId,
                             id: userId,
@@ -156,8 +136,6 @@ export const profileService = {
                 } else {
                     // If friend service is the source of the error, use cached data if available
                     if (cachedProfile && cachedProfile._id) {
-                        console.log('Using cached profile because friend service is failing');
-                        
                         // Ensure cached profile has all required fields
                         const completeProfile = {
                             ...cachedProfile,
@@ -187,8 +165,6 @@ export const profileService = {
                 }
             }
         } catch (error) {
-            console.error('Profile fetch completely failed:', error);
-            
             // Return a minimal fallback profile even on complete failure
             const emergencyFallback = {
                 _id: userId || 'unknown',
@@ -204,7 +180,7 @@ export const profileService = {
             try {
                 await AsyncStorage.setItem('user', JSON.stringify(emergencyFallback));
             } catch (storageError) {
-                console.error('Failed to save emergency fallback to storage:', storageError);
+                // Cannot store emergency fallback
             }
             
             return emergencyFallback;

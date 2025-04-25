@@ -21,13 +21,11 @@ export const channelService = {
     getChannelDetails: async (userId, channelId) => {
         // Skip if channel ID is missing
         if (!channelId) {
-            console.warn('Cannot fetch channel details: Missing channelId');
             throw new Error('Channel ID is required');
         }
         
         // First check if this channel is already known to be deleted
         if (deletedChannelIds.has(channelId)) {
-            console.log(`Skipping fetch for known deleted channel: ${channelId}`);
             throw new Error('Channel not found or was deleted');
         }
         
@@ -36,18 +34,14 @@ export const channelService = {
         const lastRequest = lastChannelRequests.get(channelId) || 0;
         
         if (now - lastRequest < 2000) {
-            console.log(`Throttling getChannelDetails request for ${channelId}`);
-            
             // Try to get from cache first
             try {
                 const cachedData = await AsyncStorage.getItem(`channel_${channelId}`);
                 if (cachedData) {
-                    const parsed = JSON.parse(cachedData);
-                    console.log(`Using cached data for channel ${channelId}`);
-                    return parsed;
+                    return JSON.parse(cachedData);
                 }
             } catch (cacheError) {
-                console.warn('Error reading channel cache:', cacheError);
+                // Continue with API request if cache fails
             }
         }
         
@@ -67,7 +61,7 @@ export const channelService = {
                     const error = await response.json();
                     errorMessage = error.error || errorMessage;
                 } catch (parseError) {
-                    console.warn('Error parsing error response:', parseError);
+                    // Use default error message
                 }
                 
                 // If channel not found, mark it as deleted to prevent future polling
@@ -85,12 +79,11 @@ export const channelService = {
             try {
                 await AsyncStorage.setItem(`channel_${channelId}`, JSON.stringify(channelData));
             } catch (cacheError) {
-                console.warn('Error caching channel data:', cacheError);
+                // Ignore cache errors
             }
             
             return channelData;
         } catch (error) {
-            console.error('Channel details fetch error:', error);
             throw error;
         }
     },
@@ -111,7 +104,6 @@ export const channelService = {
 
             return response.json();
         } catch (error) {
-            console.error('Channel creation error:', error);
             throw error;
         }
     },
@@ -130,7 +122,6 @@ export const channelService = {
 
             return response.json();
         } catch (error) {
-            console.error('Public channels fetch error:', error);
             throw error;
         }
     },
@@ -149,7 +140,6 @@ export const channelService = {
 
             return response.json();
         } catch (error) {
-            console.error('Private channels fetch error:', error);
             throw error;
         }
     },
@@ -168,7 +158,6 @@ export const channelService = {
 
             return response.json();
         } catch (error) {
-            console.error('Channel members fetch error:', error);
             throw error;
         }
     },
@@ -189,7 +178,6 @@ export const channelService = {
 
             return response.json();
         } catch (error) {
-            console.error('Channel update error:', error);
             throw error;
         }
     },
@@ -210,7 +198,6 @@ export const channelService = {
 
             return response.json();
         } catch (error) {
-            console.error('Member management error:', error);
             throw error;
         }
     },
@@ -231,7 +218,6 @@ export const channelService = {
 
             return response.json();
         } catch (error) {
-            console.error('Add members error:', error);
             throw error;
         }
     },
@@ -239,8 +225,6 @@ export const channelService = {
     // Delete a channel
     deleteChannel: async (userId, channelId) => {
         try {
-            console.log(`Attempting to delete channel: ${channelId}`);
-
             // Mark as deleted FIRST to prevent further API calls during deletion
             channelService.markChannelAsDeleted(channelId);
             
@@ -250,10 +234,9 @@ export const channelService = {
                 if (messageService.activePolling && messageService.activePolling.has(channelId)) {
                     clearInterval(messageService.activePolling.get(channelId));
                     messageService.activePolling.delete(channelId);
-                    console.log(`Stopped polling for deleted channel: ${channelId}`);
                 }
             } catch (pollError) {
-                console.warn('Failed to stop message polling:', pollError);
+                // Ignore polling errors
             }
             
             // Immediately clean up local data
@@ -276,10 +259,8 @@ export const channelService = {
             // Update the persistent deleted channels list
             channelService.saveDeletedChannelsList();
             
-            console.log(`Channel ${channelId} successfully deleted and all data cleaned up`);
             return response.json();
         } catch (error) {
-            console.error('Channel deletion error:', error);
             throw error;
         }
     },
@@ -296,11 +277,9 @@ export const channelService = {
         
         // Skip if already marked as deleted
         if (deletedChannelIds.has(channelId)) {
-            console.log(`Channel ${channelId} already marked as deleted`);
             return;
         }
         
-        console.log(`Marking channel as deleted: ${channelId}`);
         deletedChannelIds.add(channelId);
         
         // Immediately clear any pending cleanups
@@ -314,7 +293,7 @@ export const channelService = {
         
         // Directly start cleanup without delay
         channelService.cleanupChannelData(channelId)
-            .catch(err => console.warn(`Failed to clean up channel data for ${channelId}:`, err));
+            .catch(() => {/* Ignore cleanup errors */});
     },
 
     // Save the deleted channels list to persistent storage
@@ -322,9 +301,8 @@ export const channelService = {
         try {
             const deletedList = Array.from(deletedChannelIds);
             await AsyncStorage.setItem('deleted_channels', JSON.stringify(deletedList));
-            console.log(`Saved ${deletedList.length} deleted channel IDs to persistent storage`);
         } catch (error) {
-            console.error('Error saving deleted channels list:', error);
+            // Ignore storage errors
         }
     },
 
@@ -335,10 +313,9 @@ export const channelService = {
             if (deletedListStr) {
                 const deletedList = JSON.parse(deletedListStr);
                 deletedList.forEach(id => deletedChannelIds.add(id));
-                console.log(`Loaded ${deletedList.length} deleted channel IDs from storage`);
             }
         } catch (error) {
-            console.error('Error loading deleted channels list:', error);
+            // Ignore storage errors
         }
     },
 
@@ -351,18 +328,15 @@ export const channelService = {
                 pendingCleanups.delete(channelId);
             }
             
-            console.log(`Cleaning up local data for channel: ${channelId}`);
-            
             // 1. Clean up message service polling
             try {
                 const messageService = require('./message.service').default;
                 if (messageService.activePolling && messageService.activePolling.has(channelId)) {
                     clearInterval(messageService.activePolling.get(channelId));
                     messageService.activePolling.delete(channelId);
-                    console.log(`Stopped polling for deleted channel: ${channelId}`);
                 }
             } catch (pollError) {
-                console.warn(`Failed to stop message polling for ${channelId}:`, pollError);
+                // Ignore polling errors
             }
             
             // 2. Clear all AsyncStorage items related to this channel
@@ -376,7 +350,6 @@ export const channelService = {
             
             if (channelKeys.length > 0) {
                 await AsyncStorage.multiRemove(channelKeys);
-                console.log(`Removed ${channelKeys.length} channel-specific storage keys`);
             }
             
             // 3. Clean channel from all channel lists
@@ -398,11 +371,10 @@ export const channelService = {
                         
                         if (filteredList.length !== list.length) {
                             await AsyncStorage.setItem(listKey, JSON.stringify(filteredList));
-                            console.log(`Removed channel from ${listKey}, new length: ${filteredList.length}`);
                         }
                     }
                 } catch (listError) {
-                    console.warn(`Error cleaning channel from ${listKey}:`, listError);
+                    // Ignore list errors
                 }
             }
             
@@ -411,10 +383,8 @@ export const channelService = {
                 lastChannelRequests.delete(channelId);
             }
             
-            console.log(`Successfully cleaned up all data for channel: ${channelId}`);
             return true;
         } catch (error) {
-            console.error('Error cleaning up channel data:', error);
             return false;
         }
     },
@@ -422,8 +392,6 @@ export const channelService = {
     // Leave a channel
     leaveChannel: async (userId, channelId) => {
         try {
-            console.log(`Attempting to leave channel: ${channelId}`);
-            
             const response = await fetch(`${API_URL}/channels/${channelId}/leave`, {
                 method: 'POST',
                 headers: channelService.getHeaders(userId)
@@ -441,14 +409,9 @@ export const channelService = {
                     if (isJson) {
                         const errorData = await response.json();
                         errorMessage = errorData.error || errorData.message || errorMessage;
-                    } else {
-                        // For HTML or plain text errors
-                        const textResponse = await response.text();
-                        console.error('Non-JSON error response:', textResponse);
-                        errorMessage = 'Server returned non-JSON error';
                     }
                 } catch (parseError) {
-                    console.error('Error parsing response:', parseError);
+                    // Use default error message
                 }
                 
                 throw new Error(errorMessage);
@@ -460,16 +423,12 @@ export const channelService = {
                     return await response.json();
                 } else {
                     // If it's not JSON but successful, return a simple success object
-                    const textResponse = await response.text();
-                    console.log('Non-JSON success response:', textResponse);
                     return { success: true, message: 'Left channel successfully' };
                 }
             } catch (parseError) {
-                console.log('Response parsing error but operation likely succeeded:', parseError);
                 return { success: true, message: 'Left channel successfully' };
             }
         } catch (error) {
-            console.error('Channel leave error:', error);
             throw error;
         }
     },
@@ -484,7 +443,6 @@ export const channelService = {
             
             return [...publicChannels, ...privateChannels];
         } catch (error) {
-            console.error('All channels fetch error:', error);
             throw error;
         }
     },
@@ -509,7 +467,6 @@ export const channelService = {
 
             return response.json();
         } catch (error) {
-            console.error('Channel invitation creation error:', error);
             throw error;
         }
     },
@@ -528,7 +485,6 @@ export const channelService = {
 
             return response.json();
         } catch (error) {
-            console.error('Channel invitations fetch error:', error);
             throw error;
         }
     },
@@ -536,18 +492,12 @@ export const channelService = {
     // Get channel profile details
     getChannelProfile: async (userId, channelId) => {
         try {
-            // Log request details for debugging
-            console.log(`Fetching channel profile: userId=${userId}, channelId=${channelId}`);
-            
             // Try getting channel details directly instead of using a specific profile endpoint
             try {
                 // First attempt - use standard channel details endpoint
                 return await channelService.getChannelDetails(userId, channelId);
             } catch (apiError) {
-                console.error('Channel details fetch error:', apiError);
-                
                 // Fallback: create a basic channel object
-                console.log('Falling back to basic channel data');
                 return {
                     _id: channelId,
                     id: channelId, // Include both ID formats for compatibility
@@ -559,7 +509,6 @@ export const channelService = {
                 };
             }
         } catch (error) {
-            console.error('Channel profile fetch error:', error);
             throw error;
         }
     },
@@ -583,7 +532,6 @@ export const channelService = {
             
             return response.json();
         } catch (error) {
-            console.error('Channel search error:', error);
             throw error;
         }
     },
@@ -607,7 +555,6 @@ export const channelService = {
             
             return response.json();
         } catch (error) {
-            console.error('Trending channels fetch error:', error);
             throw error;
         }
     },
@@ -626,7 +573,6 @@ export const channelService = {
             
             return response.json();
         } catch (error) {
-            console.error('Recommended channels fetch error:', error);
             throw error;
         }
     },
@@ -634,8 +580,6 @@ export const channelService = {
     // Clear all deleted channel data (for app reset/logout)
     clearAllDeletedChannels: async () => {
         try {
-            console.log(`Clearing data for ${deletedChannelIds.size} deleted channels`);
-            
             // Clear all pending timeouts
             for (const [channelId, timeoutId] of pendingCleanups.entries()) {
                 clearTimeout(timeoutId);
@@ -653,10 +597,8 @@ export const channelService = {
             deletedChannelIds.clear();
             lastChannelRequests.clear();
             
-            console.log('Successfully cleared all deleted channel data');
             return true;
         } catch (error) {
-            console.error('Error clearing deleted channels:', error);
             return false;
         }
     }

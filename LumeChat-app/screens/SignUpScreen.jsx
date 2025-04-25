@@ -26,15 +26,11 @@ const SignUpScreen = ({ navigation }) => {
   useEffect(() => {
     let verificationCheck;
     if (isVerificationSent) {
-      console.log('Starting verification check interval...');
       verificationCheck = setInterval(async () => {
         try {
-          console.log('Checking email verification status...');
           const isVerified = await authService.checkEmailVerification();
-          console.log('Verification status:', isVerified);
           
           if (isVerified) {
-            console.log('Email verified! Redirecting to login...');
             clearInterval(verificationCheck);
             setIsVerificationSent(false);
             
@@ -47,14 +43,13 @@ const SignUpScreen = ({ navigation }) => {
             }, 500);
           }
         } catch (error) {
-          console.error("Error checking verification:", error);
+          // Silent error handling
         }
       }, 3000); // Increased interval to 3 seconds to reduce API load
     }
     
     return () => {
       if (verificationCheck) {
-        console.log('Clearing verification check interval');
         clearInterval(verificationCheck);
       }
     };
@@ -128,7 +123,6 @@ const SignUpScreen = ({ navigation }) => {
         username.trim()
       );
 
-      console.log('Signup successful, verification email sent');
       setIsVerificationSent(true);
       
       // Add a confirmation alert to ensure user knows what to do

@@ -56,56 +56,43 @@ const DirectMessagesScreen = () => {
       setIsLoading(true);
       setError(null);
       
-      console.log(`Loading messages between ${currentUser._id} and ${userId}`);
-      
       const messageData = await messageService.getDirectMessages(
         currentUser._id, 
         userId, 
         50
       );
       
-      console.log('API returned message data:', JSON.stringify(messageData));
-      
       let messagesToProcess = [];
       if (messageData && Array.isArray(messageData)) {
         messagesToProcess = messageData;
-        console.log('Message data is an array with length:', messagesToProcess.length);
       } else if (messageData && messageData.messages && Array.isArray(messageData.messages)) {
         messagesToProcess = messageData.messages;
-        console.log('Message data has messages array with length:', messagesToProcess.length);
       } else if (messageData && typeof messageData === 'object') {
         // Try to extract messages from other possible formats
         const possibleMessageArrays = Object.values(messageData).filter(val => Array.isArray(val));
         if (possibleMessageArrays.length > 0) {
           // Use the largest array found
           messagesToProcess = possibleMessageArrays.reduce((a, b) => a.length > b.length ? a : b, []);
-          console.log('Found potential messages array with length:', messagesToProcess.length);
         } else {
-          console.error('Could not locate messages array in response:', messageData);
           setMessages([]);
           setError('Could not parse message data');
           return;
         }
       } else {
-        console.error('Invalid message data format:', messageData);
         setError('Invalid message data received');
         setMessages([]);
         return;
       }
       
       if (!messagesToProcess || messagesToProcess.length === 0) {
-        console.log('No messages to process, setting empty messages array');
         setMessages([]);
         return;
       }
       
-      console.log(`Processing ${messagesToProcess.length} messages`);
       const formattedMessages = formatMessages(messagesToProcess);
-      console.log(`Formatted ${formattedMessages.length} messages`);
       
       setMessages(formattedMessages);
     } catch (error) {
-      console.error('Error loading messages:', error);
       setError('Could not load messages. Please try again.');
       setMessages([]);
     } finally {
@@ -119,32 +106,24 @@ const DirectMessagesScreen = () => {
   };
 
   const formatMessages = (messagesArray) => {
-    console.log('formatMessages received:', messagesArray);
-    
     // Add comprehensive validation
     if (!messagesArray) {
-      console.error('formatMessages: messagesArray is null or undefined');
       return [];
     }
     
     if (!Array.isArray(messagesArray)) {
-      console.error('formatMessages: messagesArray is not an array:', typeof messagesArray);
       return [];
     }
     
     if (messagesArray.length === 0) {
-      console.log('formatMessages: messagesArray is empty');
       return [];
     }
     
     try {
       const formatted = messagesArray.map(msg => {
         if (!msg) {
-          console.warn('Null or undefined message in array');
           return null;
         }
-        
-        console.log('Processing message:', JSON.stringify(msg));
         
         // Extract fields with fallbacks
         const id = msg.id || msg._id || `local-${Date.now()}-${Math.random()}`;
@@ -171,10 +150,8 @@ const DirectMessagesScreen = () => {
       .filter(Boolean) // Remove any null items from the map
       .sort((a, b) => a.createdAt - b.createdAt);
       
-      console.log(`Successfully formatted ${formatted.length} messages`);
       return formatted;
     } catch (error) {
-      console.error('Error in formatMessages:', error);
       return [];
     }
   };

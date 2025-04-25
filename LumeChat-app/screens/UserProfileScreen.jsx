@@ -26,10 +26,6 @@ const UserProfileScreen = ({ route, navigation }) => {
             
             // Validate both user IDs before proceeding
             if (!userId || !currentUser?._id) {
-                console.error('Missing user information:', { 
-                    currentUserId: currentUser?._id, 
-                    targetUserId: userId 
-                });
                 Alert.alert(
                     'Error', 
                     'Could not load user profile. The user might not exist or the connection failed.',
@@ -40,12 +36,9 @@ const UserProfileScreen = ({ route, navigation }) => {
                 return;
             }
             
-            console.log('Fetching profile for userId:', userId, 'as currentUser:', currentUser._id);
-            
             const profile = await friendService.getUserProfile(currentUser._id, userId);
             
             if (!profile || !profile._id) {
-                console.error('Invalid profile data received:', profile);
                 Alert.alert(
                     'Error', 
                     'Could not load user profile.',
@@ -56,7 +49,6 @@ const UserProfileScreen = ({ route, navigation }) => {
                 return;
             }
             
-            console.log('Received profile data:', profile);
             setUserProfile(profile);
             
             // Fix for "friend" status - ensure it's correctly mapped to "friends"
@@ -72,10 +64,8 @@ const UserProfileScreen = ({ route, navigation }) => {
                 friendStatus = 'friends';
             }
             
-            console.log('Setting friendship status:', friendStatus);
             setRequestStatus(friendStatus);
         } catch (error) {
-            console.error('Failed to load user profile:', error);
             Alert.alert(
                 'Error', 
                 'Could not load user profile. The user might not exist or the connection failed.',
@@ -99,7 +89,6 @@ const UserProfileScreen = ({ route, navigation }) => {
             setRequestStatus('pending_outgoing');
             Alert.alert('Success', 'Friend request sent successfully');
         } catch (error) {
-            console.error('Failed to send friend request:', error);
             Alert.alert('Error', error.message || 'Failed to send friend request');
         }
     };
@@ -167,8 +156,6 @@ const UserProfileScreen = ({ route, navigation }) => {
     };
 
     const renderFriendshipButtons = () => {
-        console.log("Rendering buttons for friendship status:", requestStatus);
-        
         // Fix for case inconsistency - handle both "friend" and "friends"
         if (requestStatus === 'friends' || requestStatus === 'friend') {
             return (

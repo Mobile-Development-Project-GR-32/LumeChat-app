@@ -38,11 +38,9 @@ const LoginScreen = () => {
     setIsLoading(true);
     try {
       const userData = await authService.signIn(email, password);
-      console.log('Login successful:', userData);
       dispatch({ type: 'SET_USER', payload: userData });
       navigation.replace("HomeScreen");
     } catch (error) {
-      console.error('Login error:', error);
       Alert.alert(
         "Login Failed",
         error.message || "Please verify your email and password",

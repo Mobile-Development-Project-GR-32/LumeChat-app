@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet, TextInput,
 import React, { useState, useEffect, useCallback } from 'react'
 import { useSelector } from 'react-redux'
 import { MaterialIcons } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native'; // Add this import
+import { useFocusEffect } from '@react-navigation/native';
 import { channelService } from '../services/channel.service';
 import { conversationService } from '../services/conversation.service';
 import BottomNavBar from '../components/BottomNavBar';
@@ -279,7 +279,6 @@ const HomeScreen = ({ route, navigation }) => {
   useFocusEffect(
     useCallback(() => {
       setActiveTab('home');
-      console.log('HomeScreen is in focus, refreshing data...');
       if (user?._id) {
         fetchData();
       }
@@ -474,13 +473,6 @@ const HomeScreen = ({ route, navigation }) => {
         </View>
       );
     }
-
-    // Debug the channels to see if they have unreadCount
-    console.log('Channels for tab', selectedTab, currentChannels.map(c => ({
-      name: c.name,
-      unreadCount: c.unreadCount,
-      id: c.id
-    })));
 
     // Group channels by category if they're not already grouped
     const groupedChannels = currentChannels.reduce((acc, channel) => {

@@ -26,7 +26,6 @@ const ChannelProfileScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     if (route.params?.refresh) {
-      console.log('Channel profile refreshing data after member change, refresh token:', route.params.refresh);
       loadChannelData();
     }
   }, [route.params?.refresh]);
@@ -37,14 +36,10 @@ const ChannelProfileScreen = ({ route, navigation }) => {
       setError(null);
       
       if (!channelId || !user?._id) {
-        console.error('Missing data:', { channelId, userId: user?._id });
         throw new Error('Missing channel ID or user ID');
       }
-
-      console.log('Loading data for channel:', channelId);
       
       const channelData = await channelService.getChannelProfile(user._id, channelId);
-      console.log('Received channel data:', channelData);
       
       if (channelData) {
         setChannel(channelData);
@@ -59,23 +54,19 @@ const ChannelProfileScreen = ({ route, navigation }) => {
       
       try {
         const memberData = await channelService.getChannelMembers(user._id, channelId);
-        console.log('Channel members:', memberData);
         
         if (Array.isArray(memberData)) {
           setMembers(memberData);
         } else if (memberData && typeof memberData === 'object') {
           setMembers(Array.isArray(memberData.members) ? memberData.members : []);
         } else {
-          console.warn('Members data is not in expected format:', memberData);
           setMembers([]);
         }
       } catch (memberError) {
-        console.error('Error loading channel members:', memberError);
         setMembers([]);
       }
       
     } catch (error) {
-      console.error('Error loading channel profile:', error);
       setError(error.message || 'Failed to load channel information');
     } finally {
       setLoading(false);
@@ -156,7 +147,6 @@ const ChannelProfileScreen = ({ route, navigation }) => {
         userName: member.displayName || member.fullName || 'Unknown User'
       });
     } else {
-      console.error('Invalid member data:', member);
       Alert.alert('Error', 'Cannot view this user profile');
     }
   };
@@ -196,7 +186,6 @@ const ChannelProfileScreen = ({ route, navigation }) => {
       
       Alert.alert('Success', `${selectedMember.displayName || selectedMember.fullName || 'Member'} removed from channel`);
     } catch (error) {
-      console.error('Error removing member:', error);
       if (error.message && error.message.includes('creator')) {
         setActionError('Cannot remove the channel creator');
       } else {
@@ -229,7 +218,6 @@ const ChannelProfileScreen = ({ route, navigation }) => {
       
       Alert.alert('Success', `${selectedMember.displayName || selectedMember.fullName || 'Member'}'s role updated to ${newRole}`);
     } catch (error) {
-      console.error('Error updating member role:', error);
       if (error.message && error.message.includes('creator')) {
         setActionError('Cannot modify the channel creator');
       } else {

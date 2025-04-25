@@ -64,7 +64,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
     const channelId = channel._id || channel.id;
     
     if (!channelId) {
-      console.error('Channel object is missing both id and _id properties:', channel);
       return null;
     }
     
@@ -74,7 +73,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     const channelId = getChannelId();
-    console.log('Using channelId:', channelId);
     
     if (channelId) {
       loadMessages(channelId);
@@ -109,11 +107,8 @@ const ChannelChatScreen = ({ route, navigation }) => {
   
   const loadChannelMembers = async (channelId) => {
     try {
-      console.log('Loading channel members for:', channelId);
-      
       // Add validation to check if channelId is valid
       if (!channelId) {
-        console.error('Invalid channel ID');
         setMembers([]);
         setMembersCount(0);
         return;
@@ -125,8 +120,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
           channelId
         );
         
-        console.log('Channel members response:', memberData);
-        
         if (Array.isArray(memberData)) {
           setMembers(memberData);
           setMembersCount(memberData.length);
@@ -134,17 +127,14 @@ const ChannelChatScreen = ({ route, navigation }) => {
           setMembers(memberData.members);
           setMembersCount(memberData.members.length);
         } else {
-          console.warn('Members data is not in expected format:', memberData);
           setMembers([]);
           setMembersCount(0);
         }
       } catch (error) {
-        console.error('Failed to load channel members:', error);
         setMembers([]);
         setMembersCount(0);
       }
     } catch (error) {
-      console.error('Error in loadChannelMembers:', error);
       setMembers([]);
       setMembersCount(0);
     }
@@ -157,7 +147,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
       
       // Check if the channel is already known to be deleted
       if (channelService.isChannelDeleted(channelId)) {
-        console.log(`Channel ${channelId} is already known to be deleted`);
         setError('This channel has been deleted or you no longer have access.');
         setMessages([]);
         return;
@@ -165,7 +154,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
       
       // Validate channel ID
       if (!channelId) {
-        console.error('Invalid channel ID');
         setMessages([]);
         setError('Invalid channel. Please try again.');
         return;
@@ -176,7 +164,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
         try {
           await channelService.getChannelDetails(currentUser._id, channelId);
         } catch (channelError) {
-          console.error('Channel details check failed:', channelError);
           if (channelError.message.includes('not found') || 
               channelError.message.includes('deleted')) {
             setError('This channel has been deleted or you no longer have access.');
@@ -189,28 +176,19 @@ const ChannelChatScreen = ({ route, navigation }) => {
           // Other errors can be ignored, continue trying to fetch messages
         }
         
-        console.log('Loading messages for channel:', channelId);
         const messageData = await messageService.getChannelMessages(
           currentUser._id,
           channelId,
           50
         );
         
-        // Detailed console logging to diagnose the issue
-        console.log('Raw message data type:', typeof messageData);
-        console.log('Message data keys:', messageData ? Object.keys(messageData) : 'null');
-        console.log('Messages array exists:', messageData && messageData.messages ? `Yes (${messageData.messages.length} items)` : 'No');
-        
         // Try to extract messages in various ways
         let messagesToProcess = [];
         if (messageData && Array.isArray(messageData)) {
-          console.log('Message data is an array with', messageData.length, 'items');
           messagesToProcess = messageData;
         } else if (messageData && messageData.messages && Array.isArray(messageData.messages)) {
-          console.log('Message data has messages array with', messageData.messages.length, 'items');
           messagesToProcess = messageData.messages;
         } else {
-          console.error('Could not extract messages from response:', messageData);
           setError('Invalid message data received');
           setMessages([]);
           return;
@@ -218,11 +196,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
         
         // Format messages
         const formattedMessages = formatMessages(messagesToProcess);
-        console.log('Formatted messages:', formattedMessages.length);
-        
-        if (formattedMessages.length > 0) {
-          console.log('Sample message:', JSON.stringify(formattedMessages[0]));
-        }
         
         setMessages(formattedMessages);
         
@@ -231,8 +204,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
           flatListRef.current?.scrollToEnd({ animated: false });
         }, 300);
       } catch (msgError) {
-        console.error('Failed to load messages:', msgError);
-        
         // Check if this is a "channel not found" type of error
         if (msgError.message && 
            (msgError.message.includes('not found') || 
@@ -247,7 +218,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
         setMessages([]);
       }
     } catch (error) {
-      console.error('Error in loadMessages:', error);
       setError('Could not load messages. Please try again later.');
       setMessages([]);
     } finally {
@@ -258,14 +228,8 @@ const ChannelChatScreen = ({ route, navigation }) => {
   const formatMessages = (messagesArray) => {
     // Make sure we have a valid array to work with
     if (!messagesArray || !Array.isArray(messagesArray) || messagesArray.length === 0) {
-      console.warn('formatMessages received invalid or empty messages array');
       return [];
     }
-    
-    console.log('Processing', messagesArray.length, 'messages for formatting');
-    
-    // Let's log the first message to see its structure
-    console.log('First message in array:', JSON.stringify(messagesArray[0]));
     
     return messagesArray.map(msg => {
       // Extract required fields with fallbacks
@@ -351,17 +315,14 @@ const ChannelChatScreen = ({ route, navigation }) => {
       const channelId = getChannelId();
       if (channelId) {
         // Clean up any active listeners
-        const channelKey = `channel_${channelId}`;
-        // This will help prevent further polling after navigating away
         try {
           const msgService = messageService;
           if (msgService.activePolling && msgService.activePolling.has(channelId)) {
             clearInterval(msgService.activePolling.get(channelId));
             msgService.activePolling.delete(channelId);
-            console.log(`Cleanup: stopped polling for channel ${channelId}`);
           }
         } catch (e) {
-          console.warn('Error cleaning up message polling:', e);
+          // Ignore cleanup errors
         }
       }
     };
@@ -380,8 +341,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
     }
     
     try {
-      console.log('Sending message to channel ID:', channelId);
-      
       const sentMessage = await messageService.postChannelMessage(
         currentUser._id,
         channelId,
@@ -409,7 +368,6 @@ const ChannelChatScreen = ({ route, navigation }) => {
       }, 100);
       
     } catch (error) {
-      console.error('Failed to send message:', error);
       Alert.alert('Error', 'Failed to send message');
     }
   };

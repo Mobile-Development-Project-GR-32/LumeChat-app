@@ -26,8 +26,6 @@ export const authService = {
   // Sign up new user
   signUp: async (email, password, fullName, username) => {
     try {
-      console.log('Attempting signup with:', { email, fullName, username });
-      
       // Check username availability first
       const isUsernameAvailable = await authService.checkUsernameAvailability(username);
       if (!isUsernameAvailable) {
@@ -36,7 +34,6 @@ export const authService = {
 
       // Create user with Firebase Auth
       const userCred = await createUserWithEmailAndPassword(firebaseAuth, email, password);
-      console.log('User created:', userCred.user.uid);
 
       // Send verification email
       await sendEmailVerification(userCred.user);
@@ -54,15 +51,12 @@ export const authService = {
         profilePic: null  // Explicitly set to null instead of undefined
       };
 
-      console.log('Storing user data:', userData);
-
       // Store in AsyncStorage for later verification
       await AsyncStorage.setItem('pendingUserData', JSON.stringify(userData));
       
       return userCred.user;
 
     } catch (error) {
-      console.error('Signup error:', error);
       throw new Error(
         error.code === 'auth/email-already-in-use' ? 'Email is already in use.' :
         error.code === 'auth/invalid-email' ? 'Invalid email address.' :
@@ -80,19 +74,16 @@ export const authService = {
       
       // Get fresh profile data from API
       try {
-        console.log('Fetching profile after login...');
         const profile = await profileService.getProfile(userCred.user.uid);
         
         // If we only got a fallback profile, try to enhance it with Firebase data
         if (profile.isFallback) {
-          console.log('Received fallback profile, attempting to enhance with Firebase data');
           // Get user document from Firestore
           const userDocRef = doc(firestoreDB, "users", userCred.user.uid);
           const userDoc = await getDoc(userDocRef);
           
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            console.log('Found user data in Firestore:', userData.fullName);
             
             // Merge Firebase data with the fallback profile
             const enhancedProfile = {
@@ -112,8 +103,6 @@ export const authService = {
         await AsyncStorage.setItem('user', JSON.stringify(profile));
         return profile;
       } catch (profileError) {
-        console.error('Failed to fetch profile after login:', profileError);
-        
         // Fallback to creating a basic profile from Firebase Auth data
         const basicProfile = {
           _id: userCred.user.uid,
@@ -130,7 +119,6 @@ export const authService = {
         return basicProfile;
       }
     } catch (error) {
-      console.error('Sign in error:', error);
       throw new Error(
         error.code === 'auth/user-not-found' ? 'Account not found. Please sign up first.' :
         error.code === 'auth/wrong-password' ? 'Incorrect password. Please try again.' :
@@ -169,18 +157,14 @@ export const authService = {
               profilePic: null  // Explicitly set to null instead of undefined
             };
 
-            console.log('Writing verified user data to Firestore:', userData);
             await setDoc(doc(firestoreDB, "users", user.uid), userData);
             await AsyncStorage.removeItem('pendingUserData');
 
             // Also update the user in AsyncStorage
             await AsyncStorage.setItem('user', JSON.stringify(userData));
-          } else {
-            console.warn('No pending user data found for verification');
           }
           return true;
         } catch (error) {
-          console.error('Error storing user data:', error);
           return false;
         }
       }
@@ -207,7 +191,7 @@ export const authService = {
         // Clean up all channel-related data
         await channelService.clearAllDeletedChannels();
       } catch (cleanupError) {
-        console.warn('Error cleaning up channel data during sign out:', cleanupError);
+        // Ignore cleanup errors
       }
       
       // Stop ALL active polling for all channels
@@ -216,12 +200,11 @@ export const authService = {
         if (messageService.activePolling) {
           for (const [channelId, intervalId] of messageService.activePolling.entries()) {
             clearInterval(intervalId);
-            console.log(`Stopped polling for channel ${channelId} during sign out`);
           }
           messageService.activePolling.clear();
         }
       } catch (pollError) {
-        console.warn('Error stopping message polling during sign out:', pollError);
+        // Ignore polling errors
       }
       
       // Remove all channel-related data from AsyncStorage
@@ -239,16 +222,14 @@ export const authService = {
         
         if (channelKeys.length > 0) {
           await AsyncStorage.multiRemove(channelKeys);
-          console.log(`Removed ${channelKeys.length} channel-related storage items`);
         }
       } catch (storageError) {
-        console.warn('Error cleaning storage during sign out:', storageError);
+        // Ignore storage errors
       }
       
       await signOut(firebaseAuth);
       await AsyncStorage.removeItem('user');
     } catch (error) {
-      console.error('Sign out error:', error);
       throw error;
     }
   },

@@ -81,7 +81,7 @@ const AppContent = () => {
           dispatch({ type: 'SET_USER', payload: JSON.parse(userData) });
         }
       } catch (error) {
-        console.error('Error loading user data:', error);
+        // Silent error handling
       }
     };
 
@@ -92,14 +92,11 @@ const AppContent = () => {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Load user data
-        // ...existing user loading code...
-        
         // Load deleted channels list to prevent polling for already deleted channels
         const { default: channelService } = await import('../services/channel.service');
         await channelService.loadDeletedChannelsList();
       } catch (error) {
-        console.warn('Error during app initialization:', error);
+        // Silent error handling
       }
     };
     
