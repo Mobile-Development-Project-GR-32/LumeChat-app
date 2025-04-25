@@ -87,7 +87,21 @@ yarn install
 3. Configure environment variables:
 Create a `.env` file in the root directory with the following variables:
 ```
+# Firebase Configuration
+FIREBASE_API_KEY=your_firebase_api_key
+FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
+FIREBASE_PROJECT_ID=your_firebase_project_id
+FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
+FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
+FIREBASE_APP_ID=your_firebase_app_id
+FIREBASE_MEASUREMENT_ID=your_firebase_measurement_id
+
+# Backend API
 API_URL=https://lumechatapp.up.railway.app/api
+
+# Stream API (for video calls)
+STREAM_API_KEY=your_stream_api_key
+CLIENT_API_SECRET=your_stream_api_secret
 ```
 
 4. Start the development server:
