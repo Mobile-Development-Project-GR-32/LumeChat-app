@@ -155,6 +155,14 @@ const ChannelChatScreen = ({ route, navigation }) => {
       setIsLoading(true);
       setError(null);
       
+      // Check if the channel is already known to be deleted
+      if (channelService.isChannelDeleted(channelId)) {
+        console.log(`Channel ${channelId} is already known to be deleted`);
+        setError('This channel has been deleted or you no longer have access.');
+        setMessages([]);
+        return;
+      }
+      
       // Validate channel ID
       if (!channelId) {
         console.error('Invalid channel ID');
@@ -164,6 +172,23 @@ const ChannelChatScreen = ({ route, navigation }) => {
       }
       
       try {
+        // First check if the channel still exists
+        try {
+          await channelService.getChannelDetails(currentUser._id, channelId);
+        } catch (channelError) {
+          console.error('Channel details check failed:', channelError);
+          if (channelError.message.includes('not found') || 
+              channelError.message.includes('deleted')) {
+            setError('This channel has been deleted or you no longer have access.');
+            setMessages([]);
+            
+            // Mark the channel as deleted to prevent further polling
+            channelService.markChannelAsDeleted(channelId);
+            return;
+          }
+          // Other errors can be ignored, continue trying to fetch messages
+        }
+        
         console.log('Loading messages for channel:', channelId);
         const messageData = await messageService.getChannelMessages(
           currentUser._id,
@@ -207,7 +232,18 @@ const ChannelChatScreen = ({ route, navigation }) => {
         }, 300);
       } catch (msgError) {
         console.error('Failed to load messages:', msgError);
-        setError(msgError.message || 'Could not load messages. Please try again later.');
+        
+        // Check if this is a "channel not found" type of error
+        if (msgError.message && 
+           (msgError.message.includes('not found') || 
+            msgError.message.includes('deleted'))) {
+          setError('This channel has been deleted or you no longer have access.');
+          // Mark the channel as deleted to prevent further polling
+          channelService.markChannelAsDeleted(channelId);
+        } else {
+          setError(msgError.message || 'Could not load messages. Please try again later.');
+        }
+        
         setMessages([]);
       }
     } catch (error) {
@@ -309,6 +345,27 @@ const ChannelChatScreen = ({ route, navigation }) => {
       };
     }
   }, [currentUser._id, getChannelId]);
+
+  useEffect(() => {
+    return () => {
+      const channelId = getChannelId();
+      if (channelId) {
+        // Clean up any active listeners
+        const channelKey = `channel_${channelId}`;
+        // This will help prevent further polling after navigating away
+        try {
+          const msgService = messageService;
+          if (msgService.activePolling && msgService.activePolling.has(channelId)) {
+            clearInterval(msgService.activePolling.get(channelId));
+            msgService.activePolling.delete(channelId);
+            console.log(`Cleanup: stopped polling for channel ${channelId}`);
+          }
+        } catch (e) {
+          console.warn('Error cleaning up message polling:', e);
+        }
+      }
+    };
+  }, []);
   
   const sendMessage = async () => {
     if (!inputText.trim()) return;
@@ -518,29 +575,45 @@ const ChannelChatScreen = ({ route, navigation }) => {
 
   const emptyContainer = (
     <View style={styles.emptyContainer}>
-      <MaterialIcons name="forum" size={48} color="#7289DA" />
-      <Text style={styles.emptyText}>Welcome to #{channel.name}!</Text>
-      <Text style={styles.emptySubtext}>This is the beginning of the channel</Text>
-      <View style={{ flexDirection: 'row', marginTop: 16 }}>
-        <TouchableOpacity 
-          style={styles.retryButton}
-          onPress={() => loadMessages(getChannelId())}
-        >
-          <Text style={styles.retryText}>Retry</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.retryButton, { marginLeft: 8, backgroundColor: '#43B581' }]}
-          onPress={() => {
-            const channelId = getChannelId();
-            Alert.alert(
-              'Debug Info',
-              `Channel ID: ${channelId}\nUser ID: ${currentUser._id}\nMessages: ${messages.length}`
-            );
-          }}
-        >
-          <Text style={styles.retryText}>Debug</Text>
-        </TouchableOpacity>
-      </View>
+      {error && error.includes('deleted') ? (
+        <>
+          <MaterialIcons name="error-outline" size={48} color="#F04747" />
+          <Text style={styles.emptyText}>Channel Unavailable</Text>
+          <Text style={styles.emptySubtext}>{error}</Text>
+          <TouchableOpacity 
+            style={[styles.retryButton, { backgroundColor: '#43B581' }]}
+            onPress={() => navigation.navigate('HomeScreen', { refresh: true })}
+          >
+            <Text style={styles.retryText}>Back to Channels</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <MaterialIcons name="forum" size={48} color="#7289DA" />
+          <Text style={styles.emptyText}>Welcome to #{channel.name}!</Text>
+          <Text style={styles.emptySubtext}>This is the beginning of the channel</Text>
+          <View style={{ flexDirection: 'row', marginTop: 16 }}>
+            <TouchableOpacity 
+              style={styles.retryButton}
+              onPress={() => loadMessages(getChannelId())}
+            >
+              <Text style={styles.retryText}>Retry</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.retryButton, { marginLeft: 8, backgroundColor: '#43B581' }]}
+              onPress={() => {
+                const channelId = getChannelId();
+                Alert.alert(
+                  'Debug Info',
+                  `Channel ID: ${channelId}\nUser ID: ${currentUser._id}\nMessages: ${messages.length}`
+                );
+              }}
+            >
+              <Text style={styles.retryText}>Debug</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
     </View>
   );
 

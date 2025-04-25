@@ -217,6 +217,64 @@ const HomeScreen = ({ route, navigation }) => {
     }
   };
 
+  // Load the deleted channels list on component mount to prevent polling for already deleted channels
+  useEffect(() => {
+    const loadDeletedChannels = async () => {
+      try {
+        await channelService.loadDeletedChannelsList();
+      } catch (error) {
+        console.warn('Failed to load deleted channels list:', error);
+      }
+    };
+    
+    loadDeletedChannels();
+  }, []);
+
+  // When a channel is deleted from the UI
+  const handleDeleteChannel = async (channelId) => {
+    try {
+      setIsLoading(true);
+      
+      // Mark the channel as deleted in memory immediately to prevent further API calls
+      channelService.markChannelAsDeleted(channelId);
+      
+      // Remove from local state immediately for better UX
+      setPublicChannels(prevChannels => 
+        prevChannels.filter(channel => channel._id !== channelId && channel.id !== channelId)
+      );
+      
+      setPrivateChannels(prevChannels => 
+        prevChannels.filter(channel => channel._id !== channelId && channel.id !== channelId)
+      );
+      
+      // Stop any active message polling
+      try {
+        if (messageService.activePolling && messageService.activePolling.has(channelId)) {
+          clearInterval(messageService.activePolling.get(channelId));
+          messageService.activePolling.delete(channelId);
+        }
+      } catch (pollError) {
+        console.warn('Failed to stop polling:', pollError);
+      }
+      
+      // Call the API to delete the channel
+      await channelService.deleteChannel(user._id, channelId);
+      
+      // Clean up channel data thoroughly
+      await channelService.cleanupChannelData(channelId);
+      
+      // Force a refresh of the channel lists
+      await loadChannels();
+      
+      showToast('Channel deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete channel:', error);
+      Alert.alert('Error', 'Failed to delete channel');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Refresh data when the screen comes into focus
   useFocusEffect(
     useCallback(() => {

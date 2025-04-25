@@ -88,6 +88,24 @@ const AppContent = () => {
     loadUser();
   }, []);
 
+  // Load the deleted channels list when app starts
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Load user data
+        // ...existing user loading code...
+        
+        // Load deleted channels list to prevent polling for already deleted channels
+        const { default: channelService } = await import('../services/channel.service');
+        await channelService.loadDeletedChannelsList();
+      } catch (error) {
+        console.warn('Error during app initialization:', error);
+      }
+    };
+    
+    initializeApp();
+  }, []);
+
   const appContent = (
       <>
       <Stack.Screen name="LoginScreen" component={LoginScreen} />

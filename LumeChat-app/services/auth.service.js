@@ -197,6 +197,54 @@ export const authService = {
   // Sign out user
   async signOut() {
     try {
+      // Clean up all deleted channel data first
+      try {
+        const { default: channelService } = await import('./channel.service');
+        
+        // Save the deleted channels list before signing out
+        await channelService.saveDeletedChannelsList();
+        
+        // Clean up all channel-related data
+        await channelService.clearAllDeletedChannels();
+      } catch (cleanupError) {
+        console.warn('Error cleaning up channel data during sign out:', cleanupError);
+      }
+      
+      // Stop ALL active polling for all channels
+      try {
+        const { default: messageService } = await import('./message.service');
+        if (messageService.activePolling) {
+          for (const [channelId, intervalId] of messageService.activePolling.entries()) {
+            clearInterval(intervalId);
+            console.log(`Stopped polling for channel ${channelId} during sign out`);
+          }
+          messageService.activePolling.clear();
+        }
+      } catch (pollError) {
+        console.warn('Error stopping message polling during sign out:', pollError);
+      }
+      
+      // Remove all channel-related data from AsyncStorage
+      try {
+        const allKeys = await AsyncStorage.getAllKeys();
+        const channelKeys = allKeys.filter(key => 
+          key.includes('channel_') || 
+          key.includes('channelMessages_') || 
+          key.includes('channelMembers_') ||
+          key === 'publicChannels' ||
+          key === 'privateChannels' ||
+          key === 'allChannels' ||
+          key === 'recentChannels'
+        );
+        
+        if (channelKeys.length > 0) {
+          await AsyncStorage.multiRemove(channelKeys);
+          console.log(`Removed ${channelKeys.length} channel-related storage items`);
+        }
+      } catch (storageError) {
+        console.warn('Error cleaning storage during sign out:', storageError);
+      }
+      
       await signOut(firebaseAuth);
       await AsyncStorage.removeItem('user');
     } catch (error) {
