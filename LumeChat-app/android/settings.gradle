@@ -34,8 +34,20 @@ dependencyResolutionManagement {
 apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle")
 apply from: new File(["node", "--print", "require.resolve('@react-native-community/cli-platform-android/package.json')"].execute(null, rootDir).text.trim(), "../native_modules.gradle")
 
-// Uncomment the line below if you need to exclude react-native vectors
-// apply from: new File(["node", "--print", "require.resolve('@react-native-community/cli-platform-android/package.json')"].execute(null, rootDir).text.trim(), "../exclude-native-modules.gradle");
+// Explicitly include all the modules that are failing
+include ':notifee_react-native'
+include ':react-native-async-storage_async-storage'
+include ':react-native-community_netinfo'
+include ':react-native-picker_picker'
+include ':stream-io_react-native-webrtc'
+include ':stream-io_video-react-native-sdk'
+include ':react-native-gesture-handler'
+include ':react-native-incall-manager'
+include ':react-native-reanimated'
+include ':react-native-safe-area-context'
+include ':react-native-screens'
+include ':react-native-svg'
+include ':react-native-webview'
 
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')

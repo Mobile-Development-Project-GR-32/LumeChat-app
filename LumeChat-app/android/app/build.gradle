@@ -82,14 +82,14 @@ def jscFlavor = 'org.webkit:android-jsc:+'
 
 
 android {
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_11
-    }
+    // Use the ext properties defined in the root build.gradle file
+    compileSdkVersion rootProject.ext.compileSdkVersion
     ndkVersion rootProject.ext.ndkVersion
 
-    buildToolsVersion rootProject.ext.buildToolsVersion
-    compileSdk rootProject.ext.compileSdkVersion
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
 
     namespace 'com.lumechat.app'
     defaultConfig {
@@ -128,6 +128,22 @@ android {
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+
+    // Add this to make dependency resolution more relaxed
+    configurations.all {
+        resolutionStrategy {
+            // Force specific versions if needed
+            // force 'com.facebook.react:react-android:0.72.6'
+            
+            // Make dependency resolution more lenient
+            eachDependency { details ->
+                // Allow different versions of Android Gradle Plugin
+                if (details.requested.group == 'com.android.tools.build') {
+                    details.useVersion rootProject.ext.agpVersion
+                }
+            }
+        }
     }
 }
 

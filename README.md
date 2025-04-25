@@ -52,6 +52,7 @@ LumeChat is a feature-rich real-time messaging application built with React Nati
 - **UI Components**: React Native Paper, custom components
 - **Navigation**: React Navigation
 - **Styling**: StyleSheet API, Linear Gradients
+- **Backend URL**: https://lumechatapp.up.railway.app
 
 ### Key Features Implementation
 - **Real-time Messaging**: HTTP polling with Firebase Realtime database integration
@@ -86,7 +87,7 @@ yarn install
 3. Configure environment variables:
 Create a `.env` file in the root directory with the following variables:
 ```
-API_URL=http://your-api-url:3000/api
+API_URL=https://lumechatapp.up.railway.app/api
 ```
 
 4. Start the development server:
