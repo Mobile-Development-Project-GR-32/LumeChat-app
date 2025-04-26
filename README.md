@@ -113,7 +113,7 @@ npx expo start
 5. Run on a device or emulator:
    - Press `a` to run on Android emulator
    - Press `i` to run on iOS simulator
-   - Scan the QR code once you have installed the dev client to run the app
+   - Scan the QR code with your device connect the dev build with the development server
 
 ## 🔒 Authentication
 
