@@ -68,6 +68,7 @@ LumeChat is a feature-rich real-time messaging application built with React Nati
 - npm or yarn
 - Expo CLI
 - Android Studio or Xcode (for native builds)
+- The current devlopment build that acts as like ExpoGo. Link: https://expo.dev/accounts/rasmus_kaikkonen/projects/MessagingApp/builds/32798ccd-cd7c-4400-901a-6bf5e7ed85d8
 
 ### Installation
 
@@ -112,7 +113,7 @@ npx expo start
 5. Run on a device or emulator:
    - Press `a` to run on Android emulator
    - Press `i` to run on iOS simulator
-   - Scan the QR code with the Expo Go app on your physical device
+   - Scan the QR code once you have installed the dev client to run the app
 
 ## 🔒 Authentication
 
