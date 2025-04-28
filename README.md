@@ -1,8 +1,5 @@
 <div align="center">
-  <!-- Note: Create a chat logo and place it in assets/lumechat-logo.png -->
-  <img src="assets/lumechat-logo.png" alt="LumeChat Logo" width="200"/>
-  
-  # LumeChat
+  <h1>💬 LumeChat</h1>
   
   <p>A feature-rich real-time messaging application built with React Native & Expo</p>
 
@@ -18,6 +15,9 @@
 - [UI Design in Figma](https://www.figma.com/design/VHODYQtosegY59yzWkJ51W/Untitled?node-id=0-1&t=WLLkxyebUHPN7iYF-1) - Complete UI/UX design mockups and components
 - [Database Diagram](https://lucid.app/lucidchart/fd23075e-98f7-4a7c-9257-7c0aefc32965/edit?viewport_loc=329%2C1411%2C6798%2C3171%2C0_0&invitationId=inv_c42994f3-63c5-421d-acd9-04614472316e) - Entity relationship diagrams and database architecture
 - [API Documentation](https://lumechat.stoplight.io/docs/lumechat/symtd7da5glco-lumechat-api) - Complete REST API reference and endpoints
+
+### App Download
+📲 **Current development build**: [Download Development Build](https://expo.dev/accounts/rasmus_kaikkonen/projects/MessagingApp/builds/32798ccd-cd7c-4400-901a-6bf5e7ed85d8)
 
 ## ✨ Overview
 
